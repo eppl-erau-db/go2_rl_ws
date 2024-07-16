@@ -16,7 +16,7 @@ sudo apt install ros-humble-rosidl-generator-dds-idl
 
 Ensuring you have not sourced ROS2, compile cyclonedds:
 ```bash
-cd ~/workspaces/lse_go2_ws/src/unitree_ros2/cyclonedds_ws/src
+cd ~/workspaces/go2_rl_ws/src/unitree_ros2/cyclonedds_ws/src
 git clone https://github.com/ros2/rmw_cyclonedds -b humble
 git clone https://github.com/eclipse-cyclonedds/cyclonedds -b releases/0.10.x
 cd ..
@@ -25,7 +25,7 @@ colcon build --packages-select cyclonedds
 
 Then, compile unitree_go, unitree_api, rl_deploy, and unitree_ros2_python packages:
 ```bash
-cd ~/workspaces/lse_go2_ws
+cd ~/workspaces/go2_rl_ws
 source /opt/ros/humble/setup.bash
 colcon build --packages-select unitree_go
 colcon build --packages-select unitree_api
@@ -46,7 +46,7 @@ sudo gedit ~/workspaces/lse_go2_ws/src/unitree_ros2/setup.sh
 #!/bin/bash
 echo "Setup unitree ros2 environment"
 source /opt/ros/humble/setup.bash
-source ~/workspaces/lse_go2_ws/src/unitree_ros2/cyclonedds_ws/install/setup.bash
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/cyclonedds_ws/install/setup.bash
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces>
                             <NetworkInterface name="enp114s0" priority="default" multicast="default" />
@@ -57,9 +57,9 @@ Finally, restart your pc.
 
 To deploy, open a terminal and source unitree_ros and lse_go2_ws:
 ```bash
-source ~/workspaces/lse_go2_ws/src/unitree_ros2/setup.sh &&
-source ~/workspaces/lse_go2_ws/install/setup.sh &&
-cd ~/workspaces/lse_go2_ws
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source ~/workspaces/go2_rl_ws/install/setup.sh &&
+cd ~/workspaces/go2_rl_ws
 ```
 
 Then, to test:
