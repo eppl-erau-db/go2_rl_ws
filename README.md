@@ -32,17 +32,6 @@ source /opt/ros/humble/setup.bash
 colcon build
 ```
 
-Then, compile unitree_go, unitree_api, rl_deploy, and unitree_ros2_python packages:
-```bash
-cd ~/workspaces/go2_rl_ws
-source /opt/ros/humble/setup.bash
-colcon build --packages-select unitree_go
-colcon build --packages-select unitree_api
-colcon build --packages-select rl_deploy
-colcon build --packages-select go2_launch
-colcon build --packages-select unitree_ros2_python --symlink-install #symlink install for ease of editing
-```
-
 Connecting the ethernet cord to the quadruped, get the name of the connection:
 ```bash
 ifconfig
@@ -62,6 +51,19 @@ export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces>
                             <NetworkInterface name="enp114s0" priority="default" multicast="default" />
                         </Interfaces></General></Domain></CycloneDDS>'
 ```
+
+Then, compile unitree_go, unitree_api, rl_deploy, and unitree_ros2_python packages:
+```bash
+cd ~/workspaces/go2_rl_ws
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh
+colcon build --packages-select unitree_go
+colcon build --packages-select unitree_api
+colcon build --packages-select rl_deploy
+colcon build --packages-select go2_launch
+colcon build --packages-select unitree_ros2_python --symlink-install #symlink install for ease of editing
+```
+
+
 
 Finally, restart your pc.
 
