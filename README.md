@@ -76,4 +76,4 @@ ros2 launch go2_launch run_obs_nodes.launch.py
 ros2 run rl_deploy go2_rl_control
 ```
 
-This repository was developed entirely within Embry-Riddle's Engineering Physics Propulstion Laboratory! Check us out [here](https://daytonabeach.erau.edu/about/labs/engineering-physics-propulsion-lab). 
+This repository was developed entirely within Embry-Riddle Aeronautical University's Engineering Physics Propulstion Laboratory! Check us out [here](https://daytonabeach.erau.edu/about/labs/engineering-physics-propulsion-lab). 
