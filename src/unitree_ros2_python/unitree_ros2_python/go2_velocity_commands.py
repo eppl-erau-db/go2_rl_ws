@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from unitree_go.msg import WirelessController  # Adjust the import as per your package structure
+from unitree_go.msg import WirelessController
 
 
 class WirelessControl(Node):
