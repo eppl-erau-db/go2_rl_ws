@@ -72,7 +72,7 @@ source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source ~/workspaces/go2_rl_ws/install/setup.sh &&
 cd ~/workspaces/go2_rl_ws
 ros2 launch go2_launch run_obs_nodes.launch.py
-// Open a new terminal
+# Open a new terminal
 ros2 run rl_deploy go2_rl_control
 ```
 
