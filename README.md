@@ -1,8 +1,8 @@
 # RL Control Deployment - Unitree Go2
 
-This repo contains the go2_rl_ws which contains real-world implementation of the trained RL control. To find the training environment through Isaac Lab, follow this repo: https://github.com/gabearod2/IsaacLab.git. Specifically, the current training environments can be found in the "main2" branch.
+This repository contains the go2_rl_ws, allowing for the real world imeplementation of trained RL policy on the Go2, entirely through ROS2 Humble. This workspace takes the information needed for the observations from the Go2's onboard computer, and throws them into the trained RL policy. To train the RL policy, Isaac Lab was used, and perfectly tuning the rewards and environment is an ongoing process. All ONNX models can be found in the share directory of the unitree_ros2_python package. To find the training environment I used through Isaac Lab, follow this repo: https://github.com/gabearod2/IsaacLab.git. Specifically, the current training environments can be found in the "main2" branch. Note that the observations have been edited to not include the height scan or the base linear velocities as these are not easily attainable in low state, which the robot has to be in to deliver low level commands. 
 
-To setup, first install ROS2 humble, then clone this branch:
+To setup, first install ROS2 humble, then clone this repo into your workspaces directory:
 ```bash
 cd ~/workspaces
 git clone https://github.com/gabearod2/go2_rl_ws
