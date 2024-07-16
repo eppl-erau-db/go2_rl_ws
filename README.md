@@ -4,8 +4,8 @@ This repo contains the go2_rl_ws which contains real-world implementation of the
 
 To setup, first install ROS2 humble, then clone this branch:
 ```bash
-cd ~
-git clone https://github.com/gabearod2/workspaces
+cd ~/workspaces
+git clone https://github.com/gabearod2/go2_rl_ws
 ```
 
 First resolving dependencies:
