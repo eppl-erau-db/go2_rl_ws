@@ -73,9 +73,15 @@ Open a terminal and source unitree_ros and lse_go2_ws:
 ```bash
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source ~/workspaces/go2_rl_ws/install/setup.sh &&
-cd ~/workspaces/go2_rl_ws
+cd ~/workspaces/go2_rl_ws &&
 ros2 launch go2_launch run_obs_nodes.launch.py
-# Open a new terminal
+```
+
+Open a new terminal, and run the low command message publisher:
+```bash
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source ~/workspaces/go2_rl_ws/install/setup.sh &&
+cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_deploy go2_rl_control
 ```
 To edit which onnx model you use, edit go2_rl_actions to use a different ONNX model. 
