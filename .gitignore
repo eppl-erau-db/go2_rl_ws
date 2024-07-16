@@ -30,3 +30,15 @@
 *.exe
 *.out
 *.app
+
+# Build, Install, VsCode, Python, and Log 
+**/build/
+**/.vscode/
+**/__pycache__/
+**/log/
+**/install/
+
+# Cyclonedds 
+src/unitree_ros2/cyclonedds_ws/src/rmw_cyclonedds/
+src/unitree_ros2/cyclonedds_ws/src/cyclonedds/
+*.xml
