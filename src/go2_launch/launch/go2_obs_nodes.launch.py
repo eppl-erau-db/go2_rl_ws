@@ -25,14 +25,14 @@ def generate_launch_description():
             executable='go2_projected_gravity',
             name='go2_projected_gravity'
         ),
-        # Node(
-        #     package='unitree_ros2_python',
-        #     executable='go2_velocity_commands',
-        #     name='go2_velocity_commands'
-        # ),
-        # Node(
-        #     package='unitree_ros2_python',
-        #     executable='go2_rl_actions',
-        #     name='go2_rl_actions'
-        # ),
+        Node(
+            package='unitree_ros2_python',
+            executable='go2_velocity_commands',
+            name='go2_velocity_commands'
+        ),
+        Node(
+            package='unitree_ros2_python',
+            executable='go2_rl_actions',
+            name='go2_rl_actions'
+        ),
     ])
