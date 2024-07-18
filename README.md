@@ -64,8 +64,6 @@ colcon build --packages-select go2_launch
 colcon build --packages-select unitree_ros2_python --symlink-install #symlink install for ease of editing
 ```
 
-
-
 Finally, restart your pc, as recommended by Unitree.
 
 To deploy, ensure the quadraped is LYING DOWN with SPORT MODE OFF (do so in the app), as the go2_rl_control node sands the dog up, and then deploys the model.
