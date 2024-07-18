@@ -4,7 +4,7 @@ This repository contains the go2_rl_ws, allowing for the real world imeplementat
 
 Before setup, ensure you have installed [ROS2 Humble](https://docs.ros.org/en/humble/Installation.html) and are familiar to connecting your system to the Go2, through ethernet, referring to [Unitree's documentation](https://support.unitree.com/home/en/developer/Quick_start.).
 
-To setup, clone this repo into your workspaces directory:
+To setup, clone this repository into your ROS2 workspaces directory:
 ```bash
 cd ~/workspaces
 git clone https://github.com/gabearod2/go2_rl_ws
