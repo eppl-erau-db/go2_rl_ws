@@ -12,7 +12,7 @@ git clone https://github.com/gabearod2/go2_rl_ws
 
 Resolving dependencies:
 ```bash
-pip install onnxruntime-gpu
+pip install onnxruntime-gpu # or onnxruntime-cpu
 sudo apt install ros-humble-rmw-cyclonedds-cpp
 sudo apt install ros-humble-rosidl-generator-dds-idl
 ```
