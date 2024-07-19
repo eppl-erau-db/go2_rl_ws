@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>unitree_ros2_python</name>
+  <version>0.0.0</version>
+  <description>Unitree ROS 2 Python package</description>
+  <maintainer email="gabearod2@gmail.com">Gabriel_Rodriguez</maintainer>
+  <license>BSD 3-Clause License</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>unitree_go</depend>
+  <depend>unitree_api</depend>
+  <depend>rosbag2_cpp</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
