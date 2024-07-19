@@ -34,26 +34,30 @@ class Go2_RL_Actions(Node):
 
         # Defaults and scale from isaac lab:
         self.motor_qs_defaults = np.array([
-            0.1,
-            -0.1,
-            0.1,
-            -0.1,
-            0.8,
-            0.8,
-            1.0,
-            1.0,
-            -1.5,
-            -1.5,
-            -1.5,
-            -1.5,
+            0.0,
+            -0.0,
+            0.0,
+            -0.0,
+            1.1,
+            1.1,
+            1.1,
+            1.1,
+            -1.8,
+            -1.8,
+            -1.8,
+            -1.8,
         ], dtype=np.float32)
         self.scale_factor = 0.25
 
         # Finding and loading the ONNX model
         package_share_directory = get_package_share_directory('unitree_ros2_python')
-        model_path = os.path.join(package_share_directory, 'models', 'flat_policy.onnx')
+        model_path = os.path.join(package_share_directory, 'models', 'flat_policy_v5.onnx')
         self.get_logger().info(f"Model path: {model_path}")
         self.load_onnx_model(model_path)
+
+        # Create a timer to generate actions every 20 milliseconds (50 Hz)
+        self.timer_period = 0.02  # 20 milliseconds
+        self.timer = self.create_timer(self.timer_period, self.generate_actions)
 
     def load_onnx_model(self, model_path):
         self.ort_session = ort.InferenceSession(model_path)
@@ -73,10 +77,14 @@ class Go2_RL_Actions(Node):
     def joint_pos_vel_callback(self, msg):
         self.joint_pos_vel = msg.data
         self.joint_pos_init = msg.data[:12]  # Assuming the first 12 elements are joint positions
-        self.init_raw_action = (msg.joint_pos_init-self.motor_qs_defaults)/self.scale_factor
+        self.init_raw_action = (self.joint_pos_init-self.motor_qs_defaults)/self.scale_factor
 
     def generate_actions(self):
         # Creating initial observations without last action:
+        if self.cmd_vel is None or all(abs(v) < 0.1 for v in self.cmd_vel):
+            self.cmd_vel = array.array('f', [0.0, 0.0, 0.0])  # Default values
+
+
         obs = np.concatenate((self.base_vel, self.projected_gravity, self.cmd_vel, self.joint_pos_vel), axis=None)
 
         # Adding last action or first RAW action for obs
@@ -85,9 +93,11 @@ class Go2_RL_Actions(Node):
         else:
             obs = np.concatenate((obs, self.init_raw_action), axis=None)
         
+        print(obs)
+
         # Make obs into np array
         obs = obs.astype(np.float32)
-
+        
         # Reshape obs to add an extra dimension for the batch size
         obs = obs.reshape(1, -1)
 
@@ -95,19 +105,31 @@ class Go2_RL_Actions(Node):
         ort_inputs = {self.ort_session.get_inputs()[0].name: obs}
         ort_outs = self.ort_session.run(None, ort_inputs)
         self.raw_actions = ort_outs[0].flatten()
-        self.processed_actions = self.raw_actions*self.scale_factor + self.motor_qs_defaults
+        self.processed_actions = (self.raw_actions * self.scale_factor + self.motor_qs_defaults).tolist()
+        
+        self.processed_actions_ordered = [
+            self.processed_actions[1],  # 1  -> FR_hip_joint   to FR_hip   -> 0
+            self.processed_actions[5],  # 5  -> FR_thigh_joint to FR_thigh -> 1
+            self.processed_actions[9],  # 9  -> FR_calf_joint  to FR_calf  -> 2
+            self.processed_actions[0],  # 0  -> FL_hip_joint   to FL_hip   -> 3
+            self.processed_actions[4],  # 4  -> FL_thigh_joint to FL_thigh -> 4
+            self.processed_actions[8],  # 8  -> FL_calf_joint  to FL_calf  -> 5
+            self.processed_actions[3],  # 3  -> RR_hip_joint   to RR_hip   -> 6
+            self.processed_actions[7],  # 7  -> RR_thigh_joint to RR_thigh -> 7
+            self.processed_actions[11], # 11 -> RR_calf_joint  to RR_calf  -> 8
+            self.processed_actions[2],  # 2  -> RL_hip_joint   to RL_hip   -> 9
+            self.processed_actions[6],  # 6  -> RL_thigh_joint to RL_thigh -> 10
+            self.processed_actions[10]  # 10 -> RL_calf_joint  to RL_calf  -> 11
+        ]
 
         action_msg = Float32MultiArray()
-        action_msg.raw_actions = self.raw_actions
-        action_msg.processed_actions = self.processed_actions
+        action_msg.data = self.processed_actions_ordered
         self.publisher.publish(action_msg)
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = Go2_RL_Actions()
-    timer_period = 0.05  # seconds
-    node.create_timer(timer_period, node.generate_actions)
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

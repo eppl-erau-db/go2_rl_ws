@@ -25,7 +25,7 @@ class WirelessControl(Node):
     def wireless_controller_callback(self, msg):
         self.twist = Twist()
         self.twist.linear.x = msg.ly * self.speed
-        self.twist.linear.y = msg.lx * self.speed
+        self.twist.linear.y = msg.lx * -self.speed
         self.twist.angular.z = msg.rx * self.turn
         # Publish the Twist message
         self.publisher.publish(self.twist)

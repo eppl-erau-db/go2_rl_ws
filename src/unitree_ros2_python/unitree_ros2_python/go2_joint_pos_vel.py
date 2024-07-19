@@ -56,18 +56,18 @@ class JointPosVelNode(Node):
        
         # Adjusting to training defaults
         motor_qs_defaults = [
-            0.1,
-            -0.1,
-            0.1,
-            -0.1,
-            0.8,
-            0.8,
-            1.0,
-            1.0,
-            -1.5,
-            -1.5,
-            -1.5,
-            -1.5,
+            0.0,
+            -0.0,
+            0.0,
+            -0.0,
+            1.1,
+            1.1,
+            1.1,
+            1.1,
+            -1.8,
+            -1.8,
+            -1.8,
+            -1.8,
         ]
 
         # Subtracting defaults
