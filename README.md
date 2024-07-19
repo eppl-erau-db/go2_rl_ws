@@ -60,8 +60,8 @@ source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh
 colcon build --packages-select unitree_go &&
 colcon build --packages-select unitree_api &&
 colcon build --packages-select rl_deploy &&
-colcon build --packages-select go2_launch &&
-colcon build --packages-select unitree_ros2_python --symlink-install #symlink install for ease of editing
+colcon build --packages-select unitree_ros2_python --symlink-install &&
+colcon build --packages-select go2_launch
 ```
 
 Finally, restart your pc, as recommended by Unitree.
