@@ -40,7 +40,7 @@ ifconfig
 
 After using ifconfig to get name of connection, edit setup.sh file, using enp114s0 as an example:
 ```bash
-sudo gedit ~/workspaces/lse_go2_ws/src/unitree_ros2/setup.sh
+sudo gedit ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh
 ```
 ```bash
 #!/bin/bash
