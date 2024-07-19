@@ -85,3 +85,5 @@ ros2 run rl_deploy go2_rl_control
 To edit which onnx model you use, edit go2_rl_actions to use a different ONNX model. 
 
 This repository was developed entirely within Embry-Riddle Aeronautical University's Engineering Physics Propulsion Laboratory! Check us out [here](https://daytonabeach.erau.edu/about/labs/engineering-physics-propulsion-lab). 
+
+This is an experimental code, we are not responsible for any damages! Use at your own risk.
