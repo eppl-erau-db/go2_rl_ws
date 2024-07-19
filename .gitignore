@@ -41,4 +41,3 @@
 # Cyclonedds 
 src/unitree_ros2/cyclonedds_ws/src/rmw_cyclonedds/
 src/unitree_ros2/cyclonedds_ws/src/cyclonedds/
-*.xml
