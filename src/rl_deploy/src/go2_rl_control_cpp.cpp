@@ -10,7 +10,7 @@
 constexpr double StandPos[] = {0.0, 1.1, -1.8, 0.0, 1.1, -1.8, 0.0, 1.1, -1.8, 0.0, 1.1, -1.8};
 constexpr double SitPos[] = {-0.1, 1.1, -2.5, -0.1, 1.1, -2.5, -0.1, 1.1, -2.5, -0.1, 1.1, -2.5};
 constexpr double StandVel[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-constexpr double position_tolerance = 0.1;
+constexpr double position_tolerance = 0.2;
 
 class Go2_RL_Control : public rclcpp::Node
 {
@@ -78,6 +78,9 @@ private:
     // Callback function to handle lowstate messages
     void lowstate_callback(const unitree_go::msg::LowState::SharedPtr msg)
     {
+        // Store the latest motor state information
+        motor_state_ = *msg;
+
         // Check if the stand command is complete once
         if (!good_stand_)
         {
@@ -107,6 +110,16 @@ private:
                 }
             }
         }
+
+        if (good_stand_)
+        {
+            RCLCPP_INFO(this->get_logger(), "GOOD STAND.");
+        }
+
+        if (good_sit_)
+        {
+            RCLCPP_INFO(this->get_logger(), "GOOD SIT.");
+        }
     }
 
     // Function to initialize LowCmd message with default values
@@ -132,7 +145,7 @@ private:
             cmd_msg_.motor_cmd[i].mode = 0x01;
             cmd_msg_.motor_cmd[i].dq = StandVel[i];
             cmd_msg_.motor_cmd[i].tau = 0.0;
-            cmd_msg_.motor_cmd[i].kp = 40.0;
+            cmd_msg_.motor_cmd[i].kp = 50.0;
             cmd_msg_.motor_cmd[i].kd = 5.0;
         }
 
@@ -166,7 +179,7 @@ private:
     {
         for (int i = 0; i < 12; ++i)
         {
-            cmd_msg_.motor_cmd[i].q = cmd_msg_.motor_cmd[i].q; // Maintain the current position
+            cmd_msg_.motor_cmd[i].q = motor_state_.motor_state[i].q; // Maintain the current position
             cmd_msg_.motor_cmd[i].mode = 0x01;
             cmd_msg_.motor_cmd[i].dq = 0.0;
             cmd_msg_.motor_cmd[i].tau = 0.0;
@@ -178,7 +191,7 @@ private:
     get_crc(cmd_msg_);
     RCLCPP_INFO(this->get_logger(), "Publishing hold position command.");
     publisher_->publish(cmd_msg_);
-}
+    }
 
     // Function to publish LowCmd message
     void publish_lowcmd()
@@ -201,8 +214,6 @@ private:
 
         if (start_command_)
         {
-            good_stand_ = false;
-            good_sit_ = false;
             // Publish actions if start command is pressed
             int num_motors = 12;
 
@@ -228,8 +239,8 @@ private:
                 float action_value = action_.empty() ? 0.0f : action_[i];
 
                 // Calculate 75% of the motor limit range
-                float lower_limit = motor_limits[i].first;
-                float upper_limit = motor_limits[i].second;
+                float lower_limit = motor_limits[i].first * 0.95f;
+                float upper_limit = motor_limits[i].second * 0.95f;
 
                 float clamped_value = std::max(lower_limit, std::min(action_value, upper_limit));
 
@@ -246,12 +257,12 @@ private:
 
             // Check motor cmd CRC
             get_crc(cmd_msg_);
-            RCLCPP_INFO(this->get_logger(), "Publishing motor commands.");
+            RCLCPP_INFO(this->get_logger(), "Publishing actions.");
             publisher_->publish(cmd_msg_);
         }
         else 
         {
-            hold_position();
+            stand();
         }
     }
 
@@ -261,6 +272,7 @@ private:
     rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr buttons_subscription_;
     rclcpp::TimerBase::SharedPtr timer_;
     unitree_go::msg::LowCmd cmd_msg_;
+    unitree_go::msg::LowState motor_state_;
     std::vector<float> action_;
     bool stand_command_;
     bool sit_command_;

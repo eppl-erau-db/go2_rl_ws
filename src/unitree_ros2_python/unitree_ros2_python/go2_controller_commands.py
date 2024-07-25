@@ -21,14 +21,16 @@ class WirelessControl(Node):
             self.wireless_controller_callback,
             10)
         self.twist = Twist()
-        self.buttons = [0, 0, 0]  # up, down, start
+        self.up = 0.0  # up, down, start
+        self.down = 0.0
+        self.start = 0.0
         self.speed = 1.0  # Max lin speed, m/s
         self.turn = -1.0  # Max ang speed, rad/s (sign convention switch)
         self.last_msg_time = self.get_clock().now()
         self.timeout_duration = Duration(seconds=0.5)  # Timeout duration
         self.get_logger().info(
             "Wireless controller control started. Use joystick for motion."
-            )
+        )
         # Check timeout
         self.timer = self.create_timer(0.1, self.check_timeout)
 
@@ -37,12 +39,20 @@ class WirelessControl(Node):
         self.twist.linear.x = msg.ly * self.speed
         self.twist.linear.y = msg.lx * -self.speed  # (sign convention switch)
         self.twist.angular.z = msg.rx * self.turn
-        self.data = [msg.keys.up, msg.keys.down, msg.keys.start]
+
+        self.up = 1.0 if msg.keys == 4096 else 0.0
+        self.down = 1.0 if msg.keys == 16384 else 0.0
+        self.start = 1.0 if msg.keys == 4 else 0.0
+
+        # Publishing the array of button states
+        button_msg = Float32MultiArray()
+        button_msg.data = [self.up, self.down, self.start]
+
         # Publish the Twist message
         self.vel_publisher.publish(self.twist)
 
         # Publish the buttons message
-        self.buttons_publisher.publish(self.data.tolist())
+        self.buttons_publisher.publish(button_msg)
 
         # Update the last message time
         self.last_msg_time = self.get_clock().now()
@@ -53,9 +63,14 @@ class WirelessControl(Node):
             zero_twist = Twist()
             self.vel_publisher.publish(zero_twist)
 
+            # Publish zero button states
+            zero_button_msg = Float32MultiArray()
+            zero_button_msg.data = [0.0, 0.0, 0.0]
+            self.buttons_publisher.publish(zero_button_msg)
+
 
 def main(args=None):
-    rclpy.init(args=args)
+    rclpy.init()
     node = WirelessControl()
     rclpy.spin(node)
     node.destroy_node()

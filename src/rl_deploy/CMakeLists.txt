@@ -44,7 +44,7 @@ ament_target_dependencies(go2_rl_control ${DEPENDENCY_LIST})
 
 install(TARGETS 
         go2_rl_control
-        DESTINATION)
+        DESTINATION lib/${PROJECT_NAME})
 
 
 if(BUILD_TESTING)
