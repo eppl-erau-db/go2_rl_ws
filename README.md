@@ -97,4 +97,4 @@ This is an experimental code, we are not responsible for any damages! Use at you
 
 ## Training
 
-To find the training environment I used through Isaac Lab, follow my forked [Isaac Lab repo](https://github.com/gabearod2/IsaacLab/tree/rl_deployment). Specifically, the current training environments can be found in the "rl_deployment" branch. To edit which onnx model you use, edit go2_rl_actions to use a different ONNX model, ensuring it takes the same input as the current models.  
+To find the training environment I used through Isaac Lab, follow my forked [Isaac Lab repo](https://github.com/gabearod2/IsaacLab/tree/rl_deployment). To edit which onnx model you use, edit go2_rl_actions to use a different ONNX model, ensuring it takes the same input as the current models.  
