@@ -98,3 +98,5 @@ This is an experimental code, we are not responsible for any damages! Use at you
 ## Training
 
 To find the training environment I used through Isaac Lab, follow my forked [Isaac Lab repo](https://github.com/gabearod2/IsaacLab/tree/rl_deployment). To edit which onnx model you use, edit go2_rl_actions to use a different ONNX model, ensuring it takes the same input as the current models.  
+
+Future work is to train the quadruped in the the following way: [Extreme Parkour](https://github.com/chengxuxin/extreme-parkour.git) for the best results.
