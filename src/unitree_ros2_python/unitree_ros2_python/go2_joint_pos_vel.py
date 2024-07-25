@@ -21,9 +21,6 @@ class JointPosVelNode(Node):
         )
 
     def lowstate_callback(self, msg):
-        '''
-        TODO: May have to normalize for concatenation with obs term.
-        '''
         motor_qs = [
             msg.motor_state[3].q,   # 0  -> FL_hip_joint   to FL_hip   -> 3
             msg.motor_state[0].q,   # 1  -> FR_hip_joint   to FR_hip   -> 0
@@ -54,7 +51,7 @@ class JointPosVelNode(Node):
             msg.motor_state[8].dq,   # 11 -> RR_calf_joint  to RR_calf  -> 8
         ]
        
-        # Adjusting to training defaults
+        # Adjusting to training defaults (Isaac Lab)
         motor_qs_defaults = [
             0.0,
             -0.0,

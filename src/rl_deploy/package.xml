@@ -3,9 +3,9 @@
 <package format="3">
   <name>rl_deploy</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>This package takes actions and send motor commands.</description>
   <maintainer email="gabearod2@gmail.com">gabriel</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

@@ -27,7 +27,7 @@ def generate_launch_description():
         ),
         Node(
             package='unitree_ros2_python',
-            executable='go2_velocity_commands',
+            executable='go2_controller_commands',
             name='go2_velocity_commands'
         ),
         Node(

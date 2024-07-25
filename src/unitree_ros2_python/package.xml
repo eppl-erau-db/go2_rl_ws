@@ -2,14 +2,16 @@
 <package format="3">
   <name>unitree_ros2_python</name>
   <version>0.0.0</version>
-  <description>Unitree ROS 2 Python package</description>
+  <description>Unitree ROS 2 Python package with custom nodes for RL deployment.</description>
   <maintainer email="gabearod2@gmail.com">Gabriel_Rodriguez</maintainer>
-  <license>BSD 3-Clause License</license>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>sensor_msgs_py</depend>
   <depend>unitree_go</depend>
   <depend>unitree_api</depend>
   <depend>rosbag2_cpp</depend>

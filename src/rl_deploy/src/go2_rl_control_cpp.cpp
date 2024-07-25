@@ -3,7 +3,6 @@
 #include "common/motor_crc.h"
 #include "unitree_go/msg/low_cmd.hpp"
 #include "unitree_go/msg/low_state.hpp"
-#include "unitree_go/msg/wireless_controller.hpp"
 #include "unitree_go/msg/motor_cmd.hpp"
 #include <vector>
 
@@ -16,22 +15,22 @@ constexpr double position_tolerance = 0.1;
 class Go2_RL_Control : public rclcpp::Node
 {
 public:
-    Go2_RL_Control() : Node("low_cmd_publisher"), first_run_(true), stand_command_(false), sit_command_(false), start_command_(false), good_stand_(false), good_sit_(false)
+    Go2_RL_Control() : Node("low_cmd_publisher"), stand_command_(false), sit_command_(false), start_command_(false), good_stand_(false), good_sit_(false)
     {
         // Publisher for LowCmd messages
         publisher_ = this->create_publisher<unitree_go::msg::LowCmd>("/lowcmd", 10);
 
         // Subscription to actions topic
-        subscription_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
+        actions_subscription_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
             "actions", 10, std::bind(&Go2_RL_Control::actions_callback, this, std::placeholders::_1));
 
         // Subscription to lowstate topic
         lowstate_subscription_ = this->create_subscription<unitree_go::msg::LowState>(
             "/lowstate", 10, std::bind(&Go2_RL_Control::lowstate_callback, this, std::placeholders::_1));
 
-        // Subscription to the wireless controller topic 
-        controller_subscription_ = this->create_subscription<unitree_go::msg::WirelessController>(
-            "/wirelesscontroller", 10, std::bind(&Go2_RL_Control::remote_callback, this, std::placeholders::_1));
+        // Subscription to the wireless controller buttons topic 
+        buttons_subscription_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
+            "buttons", 10, std::bind(&Go2_RL_Control::buttons_callback, this, std::placeholders::_1));
 
         // Timer to regularly publish LowCmd messages
         timer_ = this->create_wall_timer(std::chrono::milliseconds(20), std::bind(&Go2_RL_Control::publish_lowcmd, this));
@@ -52,11 +51,11 @@ private:
     }
 
     // Callback function to handle incoming wireless controller messages
-    void remote_callback(const unitree_go::msg::WirelessController::SharedPtr msg)
+    void buttons_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
     {
-        stand_command_ = msg->keys.up == 1;
-        sit_command_ = msg->keys.down == 1;
-
+        // Stand and Sit Commands
+        stand_command_ = msg->data[0] == 1;
+        sit_command_ = msg->data[1] == 1;
         if (sit_command_ || stand_command_)
         {
             start_command_ = false;
@@ -66,12 +65,13 @@ private:
         if (!start_command_)
         {
             start_command_ = true;
-            if (msg->keys.start == 0 || !good_stand_)
+            if (msg->data[2] == 0 || !good_stand_)
             {
                 start_command_ = false;
             }
         }
 
+        // Logger
         RCLCPP_INFO(this->get_logger(), "Received wireless message.");
     }
 
@@ -186,6 +186,7 @@ private:
         if (stand_command_ && !good_stand_)
         {
             stand();
+            start_command_ = false;
             good_sit_ = false;
             return;
         }
@@ -193,6 +194,7 @@ private:
         if (sit_command_ && !good_sit_)
         {
             sit();
+            start_command_ = false;
             good_stand_ = false;
             return;
         }
@@ -210,13 +212,13 @@ private:
                 {-1.5708, 3.490},  // Thigh - Flipped
                 {-2.723, -0.8377}, // Calf
                 {-0.8377, 0.8377}, // Hip
-                {-1.5708, 3.490},  // Thigh 
+                {-1.5708, 3.490},  // Thigh - Flipped
                 {-2.723, -0.8377}, // Calf
                 {-0.8377, 0.8377}, // Hip
-                {-0.5235, 3.490},  // Thigh
+                {-0.5235, 3.490},  // Thigh - Flipped
                 {-2.723, -0.8377}, // Calf
                 {-0.8377, 0.8377}, // Hip
-                {-0.5235, 3.490},  // Thigh
+                {-0.5235, 3.490},  // Thigh -  Flipped
                 {-2.723, -0.8377}  // Calf
             };
 
@@ -254,9 +256,9 @@ private:
     }
 
     rclcpp::Publisher<unitree_go::msg::LowCmd>::SharedPtr publisher_;
-    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr subscription_;
+    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr actions_subscription_;
     rclcpp::Subscription<unitree_go::msg::LowState>::SharedPtr lowstate_subscription_;
-    rclcpp::Subscription<unitree_go::msg::WirelessController>::SharedPtr controller_subscription_;
+    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr buttons_subscription_;
     rclcpp::TimerBase::SharedPtr timer_;
     unitree_go::msg::LowCmd cmd_msg_;
     std::vector<float> action_;
