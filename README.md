@@ -10,7 +10,7 @@ This repository contains a ROS2 Humble workspace allowing for the real world imp
 
 Before setup, ensure you have installed [ROS2 Humble](https://docs.ros.org/en/humble/Installation.html) and are familiar to connecting your system to the Go2, through ethernet, referring to [Unitree's documentation](https://support.unitree.com/home/en/developer/Quick_start.).
 
-To setup, clone this repository into your ROS2 workspaces directory:
+To start, clone this repository into your ROS2 workspaces directory:
 ```bash
 cd ~/workspaces
 git clone --recurse-submodules https://github.com/gabearod2/go2_rl_ws
@@ -33,7 +33,6 @@ colcon build --packages-select cyclonedds
 ```
 
 Source ros and build unitree ROS2:
-Ensuring you have not sourced ROS2, compile cyclonedds:
 ```bash
 source /opt/ros/humble/setup.bash
 colcon build
@@ -59,7 +58,7 @@ export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces>
                         </Interfaces></General></Domain></CycloneDDS>'
 ```
 
-Then, compile unitree_go, unitree_api, rl_deploy, and unitree_ros2_python packages:
+Then, compile unitree_go, unitree_api, rl_deploy, go2_launch, and unitree_ros2_python packages:
 ```bash
 cd ~/workspaces/go2_rl_ws
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh
@@ -74,8 +73,9 @@ Finally, restart your pc, as recommended by Unitree.
 
 ## Deployment
 
-To deploy, ensure the quadraped is LYING DOWN with SPORT MODE OFF (do so in the app), as the go2_rl_control node stands the dog up, and then deploys the model.
-Open a terminal and source unitree_ros and lse_go2_ws:
+To deploy, ensure the quadraped is LYING DOWN with SPORT MODE OFF (do so in the app), as support for switching modes is not yet integrated. 
+
+Open a terminal, source unitree_ros and lse_go2_ws, and launch:
 ```bash
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source ~/workspaces/go2_rl_ws/install/setup.sh &&
@@ -90,7 +90,6 @@ source ~/workspaces/go2_rl_ws/install/setup.sh &&
 cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_deploy go2_rl_control
 ```
-To edit which onnx model you use, edit go2_rl_actions to use a different ONNX model. 
 
 This repository was developed entirely within Embry-Riddle Aeronautical University's Engineering Physics Propulsion Laboratory! Check us out [here](https://daytonabeach.erau.edu/about/labs/engineering-physics-propulsion-lab). 
 
@@ -98,4 +97,4 @@ This is an experimental code, we are not responsible for any damages! Use at you
 
 ## Training
 
-To find the training environment I used through Isaac Lab, follow my forked [Isaac Lab repo](https://github.com/gabearod2/IsaacLab/tree/rl_deployment). Specifically, the current training environments can be found in the "rl_deployment" branch. 
+To find the training environment I used through Isaac Lab, follow my forked [Isaac Lab repo](https://github.com/gabearod2/IsaacLab/tree/rl_deployment). Specifically, the current training environments can be found in the "rl_deployment" branch. To edit which onnx model you use, edit go2_rl_actions to use a different ONNX model, ensuring it takes the same input as the current models.  
