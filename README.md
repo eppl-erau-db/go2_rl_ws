@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This repository contains a ROS2 Humble workspace allowing for the real world implementation of a trained RL policy on the Go2. To train the RL policy, [Isaac Lab](https://github.com/isaac-sim/IsaacLab) was used, and all ONNX models can be found in the share directory of the unitree_ros2_python package. Note that the observations tensor has been edited to not include the height scan or the base linear velocities as these are not easily attainable in low state, which the robot has to be in to deliver low level commands. Development is currently underway in LiDAR decoding for height map information and sensor fusion for linear velocity information. Here is the current configuration:
+This repository contains a ROS2 Humble workspace allowing for the real world implementation of a trained RL policy on the Go2. To train the RL policy, [Isaac Lab](https://github.com/isaac-sim/IsaacLab) was used, and all ONNX models can be found in the share directory of the unitree_ros2_python package. Note that the observations tensor has been edited to not include the height scan or the base linear velocities as these are not easily attainable in low state, which the robot has to be in to deliver low level commands. Development is currently underway in LiDAR decoding for height map information and sensor fusion for linear velocity information, as well as support for 2D and 3D navigation. Here is the current configuration:
 
 ![RL Control FlowChart](https://github.com/gabearod2/go2_rl_ws/blob/main/images/RL_CONTROL.jpeg)
 
