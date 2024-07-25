@@ -91,7 +91,13 @@ cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_deploy go2_rl_control
 ```
 
-This repository was developed entirely within Embry-Riddle Aeronautical University's Engineering Physics Propulsion Laboratory! Check us out [here](https://daytonabeach.erau.edu/about/labs/engineering-physics-propulsion-lab). 
+The following is a sneak peek into the longer [video](https://youtu.be/o3_ABcsxeG8) of the pronking gait that has currently been achieved:
+
+![Video preview]([/images.gif](https://github.com/gabearod2/go2_rl_ws/blob/main/images/pronking.gif))
+
+## Comments and Disclaimer
+
+This repository was developed entirely within Embry-Riddle Aeronautical University's Engineering Physics Propulsion Laboratory! Check us out [here](https://daytonabeach.erau.edu/about/labs/engineering-physics-propulsion-lab). Thank you also to the RoboVerse community!
 
 This is an experimental code, we are not responsible for any damages! Use at your own risk.
 
