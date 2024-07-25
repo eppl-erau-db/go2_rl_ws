@@ -43,7 +43,7 @@ Connecting the ethernet cord to the quadruped, get the name of the connection:
 ifconfig
 ```
 
-After using ifconfig to get name of connection, edit setup.sh file, using enp114s0 as an example:
+After using ifconfig to get name of connection, edit the setup.sh file, using enp114s0 as an example:
 ```bash
 sudo gedit ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh
 ```
@@ -69,11 +69,11 @@ colcon build --packages-select unitree_ros2_python --symlink-install &&
 colcon build --packages-select go2_launch
 ```
 
-Finally, restart your pc, as recommended by Unitree.
+Finally, restart your PC, as recommended by Unitree.
 
 ## Deployment
 
-To deploy, ensure the quadraped is LYING DOWN with SPORT MODE OFF (do so in the app), as support for switching modes is not yet integrated. Tethering the top of the quadruped is also advised as the best way to currently stop testing is through a Ctrl+C command, putting the dog into damping mode. Work is underway for better and safer testing. Currently, when you run the low command publisher, you will need to press start and then use the joysticks to control the robot movements, to stop hit Ctrl+C in the second terminal.
+To deploy, ensure the quadraped is LYING DOWN with SPORT MODE OFF (do so in the app), as support for switching modes is not yet integrated. Tethering the top of the quadruped is also advised as the best way to currently stop testing is through a Ctrl+C command, putting the dog into damping mode. Work is underway for better and safer testing. Currently, when you run the low command publisher, you will need to press start on the remote and then use the joysticks to control the robot movements, to stop hit Ctrl+C in the second terminal.
 
 Open a terminal, source unitree_ros and lse_go2_ws, and launch:
 ```bash
@@ -104,6 +104,6 @@ This is an experimental code, we are not responsible for any damages! Use at you
 
 ## Training
 
-To find the training environment I used through Isaac Lab, follow my forked [Isaac Lab repo](https://github.com/gabearod2/IsaacLab/tree/rl_deployment). To edit which onnx model you use, edit go2_rl_actions to use a different ONNX model, ensuring it takes the same input as the current models.  
+To find the training environment I used through Isaac Lab, follow my forked [Isaac Lab repo](https://github.com/gabearod2/IsaacLab/tree/rl_deployment). To edit which RL policy you use, edit go2_rl_actions.py to use a different ONNX model, ensuring it takes the same input as the current models.  
 
 Future work is to train the quadruped in the the following way: [Extreme Parkour](https://github.com/chengxuxin/extreme-parkour.git) for the best results.
