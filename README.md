@@ -73,7 +73,7 @@ Finally, restart your pc, as recommended by Unitree.
 
 ## Deployment
 
-To deploy, ensure the quadraped is LYING DOWN with SPORT MODE OFF (do so in the app), as support for switching modes is not yet integrated. Tethering the top of the quadruped is also advised as the best way to currently stop testing is through a Ctrl+C command, putting the dog into damping mode. Work is underway for better and safer testing.  
+To deploy, ensure the quadraped is LYING DOWN with SPORT MODE OFF (do so in the app), as support for switching modes is not yet integrated. Tethering the top of the quadruped is also advised as the best way to currently stop testing is through a Ctrl+C command, putting the dog into damping mode. Work is underway for better and safer testing. Currently, when you run the low command publisher, you will need to press start and then use the joysticks to control the robot movements.
 
 Open a terminal, source unitree_ros and lse_go2_ws, and launch:
 ```bash
