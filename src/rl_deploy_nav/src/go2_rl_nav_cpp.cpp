@@ -34,7 +34,7 @@ private:
         // Extract linear and angular velocities
         float vx = msg->data[0];
         float vy = msg->data[1];
-        float vyaw = msg->data[3];
+        float vyaw = msg->data[2];
 
         // Log received command
         RCLCPP_INFO(this->get_logger(), "Received velocity command: vx = %.2f, vy = %.2f, vyaw = %.2f", vx, vy, vyaw);

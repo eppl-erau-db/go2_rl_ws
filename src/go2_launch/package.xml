@@ -3,13 +3,14 @@
 <package format="3">
   <name>go2_launch</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Package to launch walking nodes.</description>
   <maintainer email="gabearod2@gmail.com">gabriel</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>unitree_ros2_python</depend>
+  <depend>rl_navigation</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
