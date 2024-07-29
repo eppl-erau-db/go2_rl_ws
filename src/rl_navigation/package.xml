@@ -1,24 +1,30 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>rl_deploy</name>
+  <name>rl_navigation</name>
   <version>0.0.0</version>
-  <description>This package takes actions and send motor commands.</description>
+  <description>TODO: Package description</description>
   <maintainer email="gabearod2@gmail.com">gabriel</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>sensor_msgs_py</depend>
   <depend>unitree_go</depend>
   <depend>unitree_api</depend>
-  <depend>rclcpp</depend>
-  <depend>std_msgs</depend>
   <depend>rosbag2_cpp</depend>
-  
+
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
 
   <export>
-    <build_type>ament_cmake</build_type>
+    <build_type>ament_python</build_type>
   </export>
 </package>

@@ -15,7 +15,7 @@ constexpr double position_tolerance = 0.2;
 class Go2_RL_Control : public rclcpp::Node
 {
 public:
-    Go2_RL_Control() : Node("low_cmd_publisher"), stand_command_(false), sit_command_(false), start_command_(false), good_stand_(false), good_sit_(false)
+    Go2_RL_Control() : Node("low_cmd_publisher"), stand_command_(false), sit_command_(false), start_command_(false), stop_command_(false), good_stand_(false), good_sit_(false)
     {
         // Publisher for LowCmd messages
         publisher_ = this->create_publisher<unitree_go::msg::LowCmd>("/lowcmd", 10);
@@ -61,14 +61,26 @@ private:
             start_command_ = false;
         }
 
-        // Check if th start button has been hit with the dog standing
+        // Check if the start button has been hit (reset)
         if (!start_command_)
         {
             start_command_ = true;
-            if (msg->data[2] == 0 || !good_stand_)
+            if (msg->data[2] == 0)
             {
                 start_command_ = false;
             }
+        }
+
+        // Check if the stop button has been hit with
+        if (!stop_command_)
+        {
+            stop_command_ = true;
+            if (msg->data[3] == 0)
+            {
+                stop_command_ = false;
+                start_command_ = false;
+            }
+            
         }
 
         // Logger
@@ -181,7 +193,7 @@ private:
         {
             cmd_msg_.motor_cmd[i].q = motor_state_.motor_state[i].q; // Maintain the current position
             cmd_msg_.motor_cmd[i].mode = 0x01;
-            cmd_msg_.motor_cmd[i].dq = 0.0;
+            cmd_msg_.motor_cmd[i].dq = StandVel[i];
             cmd_msg_.motor_cmd[i].tau = 0.0;
             cmd_msg_.motor_cmd[i].kp = 40.0;
             cmd_msg_.motor_cmd[i].kd = 5.0;
@@ -196,19 +208,10 @@ private:
     // Function to publish LowCmd message
     void publish_lowcmd()
     {
-        if (stand_command_ && !good_stand_)
-        {
-            stand();
-            start_command_ = false;
-            good_sit_ = false;
-            return;
-        }
-
         if (sit_command_ && !good_sit_)
         {
             sit();
             start_command_ = false;
-            good_stand_ = false;
             return;
         }
 
@@ -277,8 +280,9 @@ private:
     bool stand_command_;
     bool sit_command_;
     bool start_command_;
-    bool good_stand_;
+    bool stop_command_;
     bool good_sit_;
+    bool good_stand_;
 };
 
 int main(int argc, char * argv[])
