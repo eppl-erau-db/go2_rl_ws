@@ -92,7 +92,7 @@ ros2 run rl_deploy go2_rl_control
 ```
 ## Video of Preliminary Results
 
-The following is a sneak peek into the longer [video](https://youtu.be/o3_ABcsxeG8) of the pronking gait that has currently been achieved:
+The following is a sneak peek into the longer [video](https://youtu.be/o3_ABcsxeG8) of the fronking gait that has currently been achieved:
 
 ![Video preview](https://github.com/gabearod2/go2_rl_ws/blob/main/images/pronking.gif)
 
