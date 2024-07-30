@@ -15,8 +15,8 @@ class LidarToHeightMap(Node):
         self.declare_parameter('resolution', 0.1)
         self.declare_parameter('length', 1.6)  # Length in meters
         self.declare_parameter('width', 1.0)   # Width in meters
-        self.declare_parameter('min_height', -1.0)
-        self.declare_parameter('max_height', 1.0)
+        self.declare_parameter('min_height', -2.0)
+        self.declare_parameter('max_height', 2.0)
 
         self.resolution = self.get_parameter('resolution').get_parameter_value().double_value
         self.length = self.get_parameter('length').get_parameter_value().double_value
@@ -58,7 +58,7 @@ class LidarToHeightMap(Node):
             j = int((y + (self.width / 2)) / self.resolution)
 
             if 0 <= i < self.length_cells and 0 <= j < self.width_cells:
-                self.height_map[i, j] = max(self.height_map[i, j], z-0.5)  # added offset
+                self.height_map[i, j] = max(self.height_map[i, j], z-0.3)  # added offset
 
         # Publish the height map as Float32MultiArray
         self.publish_height_map()

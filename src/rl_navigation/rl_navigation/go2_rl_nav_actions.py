@@ -20,7 +20,7 @@ class Go2_RL_Nav_Actions(Node):
         # Creating subscriptions to obs topics
         self.create_subscription(
             SportModeState,
-            'sportmodestate',
+            'rt/sportmodestate',
             self.state_callback,
             10)
         self.create_subscription(
@@ -39,7 +39,7 @@ class Go2_RL_Nav_Actions(Node):
         self.processed_actions = None
         self.base_vel = None
         self.projected_gravity = None
-        self.cmd_pose = None
+        self.cmd_pose = [0.0, 0.0, 0.0, 0.0]
 
         # Defaults and scale from isaac lab:
         self.pose_cmd_defaults = np.array([0.0, 0.0, 0.0], dtype=np.float32)
@@ -78,11 +78,11 @@ class Go2_RL_Nav_Actions(Node):
         obs = np.concatenate((self.base_vel,
                               self.projected_gravity,
                               self.cmd_pose), axis=None)
-        
+
         # Log the obs vector and its size
         self.get_logger().info(f"Obs vector: {np.array2string(obs, precision=3, separator=', ')}")
         self.get_logger().info(f"Obs vector size: {obs.size}")
-        
+
         # Make obs into np array & reshape for the batch size
         obs = obs.astype(np.float32)
         obs = obs.reshape(1, -1)
