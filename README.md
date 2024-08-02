@@ -1,4 +1,4 @@
-# RL Body Control and Navigation Deployment - Unitree Go2
+# RL Control and Navigation Deployment - Unitree Go2
 
 ## Introduction and Scope
 
