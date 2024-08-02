@@ -1,10 +1,16 @@
-# RL Control Deployment - Unitree Go2
+# RL Body Control and Navigation Deployment - Unitree Go2
 
-## Introduction
+## Introduction and Scope
 
-This repository contains a ROS2 Humble workspace allowing for the real world implementation of a trained RL policy on the Go2. Currenlty, there is support for locomotion policies and 2D navigation policies (without obstacle avoidance). To train the RL policies, [Isaac Lab](https://github.com/isaac-sim/IsaacLab) was used, and all models can be found in the share directory of the unitree_ros2_python package. They are in the ONNX format for maximum compatibility.
+This repository contains a ROS2 Humble workspace allowing for the real world implementation of a trained RL policy on the Go2. Currently, there is support for locomotion policies and 2D navigation policies (without obstacle avoidance). To train the RL policies, [Isaac Lab](https://github.com/isaac-sim/IsaacLab) was used.
 
-Note that the observations tensor has been edited to not include the height scan or the base linear velocities as these are not easily attainable in low state, which the robot has to be in to deliver low level commands. Development is currently underway in LiDAR decoding for height map information and sensor fusion for linear velocity information, as well as support for 3D navigation. Here is the current configuration of the locomotion policies:
+### Policy Information
+
+Locomotion models can be found in the share directory of the unitree_ros2_python package. Navigation models can be found in the share directory of the rl_navigation package. They are in the ONNX format for maximum compatibility.
+
+Note that the observations tensor has been edited to not include the height scan or the base linear velocities as these are not easily attainable in low state, which the robot has to be in to deliver low level commands. Development is currently underway in LiDAR decoding for height map information and sensor fusion for linear velocity information, as well as support for 3D navigation. 
+
+Here is the current configuration of the locomotion policies:
 
 ![RL Control FlowChart](https://github.com/gabearod2/go2_rl_ws/blob/main/images/RL%20CONTROL.jpeg)
 
@@ -64,20 +70,22 @@ export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces>
                         </Interfaces></General></Domain></CycloneDDS>'
 ```
 
-Then, compile unitree_go, unitree_api, rl_deploy, go2_launch, and unitree_ros2_python packages:
+Then, compile unitree_go, unitree_api, rl_deploy, go2_launch, rl_navigation, rl_deploy_nav and unitree_ros2_python packages:
 ```bash
 cd ~/workspaces/go2_rl_ws
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh
 colcon build --packages-select unitree_go &&
 colcon build --packages-select unitree_api &&
 colcon build --packages-select rl_deploy &&
+colcon build --packages-select rl_deploy_nav &&
 colcon build --packages-select unitree_ros2_python --symlink-install &&
+colcon build --packages-select rl_navigation --symlink-install &&
 colcon build --packages-select go2_launch
 ```
 
 Finally, restart your PC, as recommended by Unitree.
 
-## Deployment
+## Body Control Deployment
 
 To deploy, ensure the quadraped is LYING DOWN with SPORT MODE OFF (do so in the app), as support for switching modes is not yet integrated. Tethering the top of the quadruped is also advised as the best way to currently stop testing is through a Ctrl+C command, putting the dog into damping mode. Work is underway for better and safer testing. Currently, when you run the low command publisher, you will need to press start on the remote and then use the joysticks to control the robot movements, to stop hit Ctrl+C in the second terminal.
 
@@ -96,6 +104,43 @@ source ~/workspaces/go2_rl_ws/install/setup.sh &&
 cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_deploy go2_rl_control
 ```
+
+## Navigation Deployment
+
+To deploy, ensure the quadraped is standing in Sport Mode or AI Mode. The pose commands should be sent in the world frame. Ensure that the z command is around 0.35 [m].
+
+Open a terminal, source unitree_ros and lse_go2_ws, and create a pose command:
+```bash
+cd /mnt/nvme_partition/ros2_ws/go2_rl_ws &&
+source /mnt/nvme_partition/ros2_ws/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source /mnt/nvme_partition/ros2_ws/go2_rl_ws/install/setup.sh &&
+ros2 run rl_navigation go2_pose_command 
+```
+
+Open a new terminal, source unitree_ros and lse_go2_ws, and run the projected gravity publisher:
+```bash
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source ~/workspaces/go2_rl_ws/install/setup.sh &&
+cd ~/workspaces/go2_rl_ws &&
+ros2 run unitree_ros2_python go2_projected_gravity
+```
+
+Open a new terminal, source unitree_ros and lse_go2_ws, and run navigation action inference:
+```bash
+cd /mnt/nvme_partition/ros2_ws/go2_rl_ws &&
+source /mnt/nvme_partition/ros2_ws/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source /mnt/nvme_partition/ros2_ws/go2_rl_ws/install/setup.sh &&
+ros2 run rl_navigation go2_rl_nav_actions
+```
+
+Open a new terminal, source unitree_ros and lse_go2_ws, and run navigation commands:
+```bash
+cd /mnt/nvme_partition/ros2_ws/go2_rl_ws &&
+source /mnt/nvme_partition/ros2_ws/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source /mnt/nvme_partition/ros2_ws/go2_rl_ws/install/setup.sh &&
+ros2 run rl_deploy_nav go2_rl_nav
+```
+
 ## Video of Preliminary Results
 
 The following is a sneak peek into the longer [video](https://youtu.be/o3_ABcsxeG8) of the fronking gait that has currently been achieved:
