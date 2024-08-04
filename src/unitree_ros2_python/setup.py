@@ -30,7 +30,9 @@ setup(
             'go2_controller_commands = unitree_ros2_python.go2_controller_commands:main',
             'go2_rl_actions = unitree_ros2_python.go2_rl_actions:main',
             'go2_height_map = unitree_ros2_python.go2_height_map:main',
-            'go2_height_map_visualizer = unitree_ros2_python.go2_height_map_visualizer:main'
+            'go2_height_map_visualizer = unitree_ros2_python.go2_height_map_visualizer:main',
+            'go2_depth_map = unitree_ros2_python.go2_depth_map:main',
+            'go2_depth_map_visualizer = unitree_ros2_python.go2_depth_map_visualizer:main'
         ],
     },
 )
