@@ -21,9 +21,12 @@ class WirelessControl(Node):
             self.wireless_controller_callback,
             10)
         self.twist = Twist()
-        self.up = 0.0  # up, down, start
-        self.down = 0.0
-        self.start = 0.0
+        self.up = 0.0  # up
+        self.down = 0.0  # down
+        self.start = 0.0  # start button
+        self.select = 0.0  # select button
+        self.a = 0.0  # A button
+        self.b = 0.0  # B button
         self.speed = 1.0  # Max lin speed, m/s
         self.turn = -1.0  # Max ang speed, rad/s (sign convention switch)
         self.last_msg_time = self.get_clock().now()
@@ -43,6 +46,9 @@ class WirelessControl(Node):
         self.up = 1.0 if msg.keys == 4096 else 0.0
         self.down = 1.0 if msg.keys == 16384 else 0.0
         self.start = 1.0 if msg.keys == 4 else 0.0
+        self.select = 1.0 if msg.keys == 8 else 0.0
+        self.a = 1.0 if msg.keys == 256 else 0.0
+        self.b = 1.0 if msg.keys == 512 else 0.0
 
         # Publishing the array of button states
         button_msg = Float32MultiArray()

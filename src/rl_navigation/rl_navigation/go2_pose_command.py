@@ -12,7 +12,7 @@ import numpy as np
 
 class TeleopPoseCommand(Node):
     def __init__(self):
-        super().__init__('teleop_pose_command')
+        super().__init__('teleop_pose_command')                              
         self.pose_publisher = self.create_publisher(
             Float32MultiArray,
             'cmd_pose',
@@ -39,7 +39,7 @@ class TeleopPoseCommand(Node):
         self.timer = self.create_timer(0.1, self.check_input)
 
     def state_callback(self, msg):
-        # Obtaining current pose 
+        # Obtaining current pose
         self.pose = np.array(msg.position, dtype=np.float32)
         self.heading = np.array(msg.imu_state.rpy[2])
         self.current_pose = np.concatenate(self.pose, self.heading, axis=None)

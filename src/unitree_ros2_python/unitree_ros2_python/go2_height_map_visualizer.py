@@ -12,7 +12,7 @@ class HeightMapSubscriber(Node):
         super().__init__('height_map_subscriber')
 
         # Initialize parameters
-        self.declare_parameter('length', 1.6)
+        self.declare_parameter('length', 1.0)
         self.declare_parameter('width', 1.0)
         self.declare_parameter('resolution', 0.1)
 
