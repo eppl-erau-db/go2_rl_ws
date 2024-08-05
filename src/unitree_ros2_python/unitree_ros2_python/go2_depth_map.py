@@ -16,7 +16,7 @@ class LidarToDepthMap(Node):
         self.declare_parameter('length', 1.0)  # Length in meters
         self.declare_parameter('width', 1.0)   # Width in meters
         self.declare_parameter('min_depth', 0.0) # Min depth value (if needed)
-        self.declare_parameter('max_depth', 10.0) # Max depth value (if needed)
+        self.declare_parameter('max_depth', 2.0) # Max depth value (if needed)
         self.declare_parameter('offset', -0.35)
 
         self.resolution = self.get_parameter('resolution').get_parameter_value().double_value
@@ -87,32 +87,32 @@ class LidarToDepthMap(Node):
                 self.depth_map[i, j] = min(self.depth_map[i, j], x)
                 self.depth_map[i, j] = max(self.depth_map[i, j], self.min_depth)
 
-        # Interpolate missing values by averaging neighboring cells
-        for i in range(self.depth_map.shape[0]):
-            for j in range(self.depth_map.shape[1]):
-                cell_value = self.depth_map[i, j]
-                if cell_value == self.max_depth:
-                    # Collect neighboring cell values
-                    neighbors = []
-                    for di in [-1, 0, 1]:
-                        for dj in [-1, 0, 1]:
-                            ni = i + di
-                            nj = j + dj
-                            if 0 <= ni < self.depth_map.shape[0] and 0 <= nj < self.depth_map.shape[1]:
-                                neighbor_value = self.depth_map[ni, nj]
-                                if neighbor_value != self.max_depth:
-                                    neighbors.append(neighbor_value)
+        # # Interpolate missing values by averaging neighboring cells
+        # for i in range(self.depth_map.shape[0]):
+        #     for j in range(self.depth_map.shape[1]):
+        #         cell_value = self.depth_map[i, j]
+        #         if cell_value == self.max_depth:
+        #             # Collect neighboring cell values
+        #             neighbors = []
+        #             for di in [-1, 0, 1]:
+        #                 for dj in [-1, 0, 1]:
+        #                     ni = i + di
+        #                     nj = j + dj
+        #                     if 0 <= ni < self.depth_map.shape[0] and 0 <= nj < self.depth_map.shape[1]:
+        #                         neighbor_value = self.depth_map[ni, nj]
+        #                         if neighbor_value != self.max_depth:
+        #                             neighbors.append(neighbor_value)
                     
-                    if neighbors:
-                        # Calculate the mean of the valid neighbors
-                        self.depth_map[i, j] = np.mean(neighbors)
+        #             if neighbors:
+        #                 # Calculate the mean of the valid neighbors
+        #                 self.depth_map[i, j] = np.mean(neighbors)
 
         # Publish the depth map as Float32MultiArray
         self.publish_depth_map()
 
     def publish_depth_map(self):
         # Optionally flip the depth map if needed:
-        self.depth_map = np.rot90(self.depth_map, k=1) 
+        self.depth_map = np.rot90(self.depth_map, k=-1) 
 
         # Create and publish message
         msg = Float32MultiArray()
