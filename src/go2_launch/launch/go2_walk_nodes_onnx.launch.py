@@ -27,7 +27,7 @@ def generate_launch_description():
         ),
         Node(
             package='unitree_ros2_python',
-            executable='go2_rl_actions',
-            name='go2_rl_actions'
+            executable='go2_rl_actions_onnx',
+            name='go2_rl_actions_onnx'
         ),
     ])

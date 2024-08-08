@@ -18,7 +18,7 @@ def generate_launch_description():
 
         Node(
             package='rl_navigation',
-            executable='go2_rl_nav_actions',
-            name='go2_rl_nav_actions'
+            executable='go2_rl_nav_actions_onnx',
+            name='go2_rl_nav_actions_onnx'
         ),
     ])

@@ -5,7 +5,7 @@ from std_msgs.msg import Float32MultiArray
 from geometry_msgs.msg import Twist
 import numpy as np
 import array
-import onnxruntime as ort
+import torch
 import os
 from ament_index_python.packages import get_package_share_directory
 
@@ -51,7 +51,7 @@ class Go2_RL_Actions(Node):
         self.joint_pos_vel = None
         self.joint_pos_init = None
 
-        # Defaults and scale from isaac lab:
+        # Defaults and scale from isaac lab, may need to be changed.
         self.motor_qs_defaults = np.array([
             0.0,
             -0.0,
@@ -68,11 +68,11 @@ class Go2_RL_Actions(Node):
         ], dtype=np.float32)
         self.scale_factor = 0.25  # Can be found in isaac lab repo
 
-        # Finding and loading the ONNX model - can be changed to desired model
+        # Finding and loading the JIT model - can be changed to desired model
         share_dir = get_package_share_directory('unitree_ros2_python')
-        model_path = os.path.join(share_dir, 'models', 'flat_policy_v5.onnx')
+        model_path = os.path.join(share_dir, 'models', 'flat_policy.pt')
         self.get_logger().info(f"Model path: {model_path}")
-        self.load_onnx_model(model_path)
+        self.load_jit_model(model_path)
 
         # Create a timer to generate actions every 20 milliseconds (50 Hz)
         self.timer_period = 0.02  # 20 milliseconds
@@ -80,9 +80,10 @@ class Go2_RL_Actions(Node):
             self.timer_period,
             self.generate_actions)
 
-    def load_onnx_model(self, model_path):
-        self.ort_session = ort.InferenceSession(model_path)
-        
+    def load_jit_model(self, model_path):
+        self.jit_model = torch.jit.load(model_path)
+        self.jit_model.eval()
+
     def base_vel_callback(self, msg):
         self.base_vel = msg.data
 
@@ -125,9 +126,10 @@ class Go2_RL_Actions(Node):
         obs = obs.reshape(1, -1)
 
         # Run inference
-        ort_inputs = {self.ort_session.get_inputs()[0].name: obs}
-        ort_outs = self.ort_session.run(None, ort_inputs)
-        self.raw_actions = ort_outs[0].flatten()
+        obs_tensor = torch.from_numpy(obs)
+        with torch.no_grad():
+            output = self.jit_model(obs_tensor)
+        self.raw_actions = output.numpy().flatten()
 
         # Accounting for offset and scale (Isaac Lab)
         self.processed_actions = (self.raw_actions * self.scale_factor + self.motor_qs_defaults).tolist()
@@ -145,6 +147,8 @@ class Go2_RL_Actions(Node):
             self.processed_actions[6],  # 6  -> RL_thigh_joint to RL_thigh -> 10
             self.processed_actions[10]  # 10 -> RL_calf_joint  to RL_calf  -> 11
         ]
+
+        # TODO: ADD MOTOR POS LIMITING TO REDUCED LIKELIHOOD OF DAMAGE
 
         # Publishing action messages
         action_msg = Float32MultiArray()

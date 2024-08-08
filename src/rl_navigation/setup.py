@@ -25,7 +25,8 @@ setup(
     entry_points={
         'console_scripts': [
             'go2_pose_command = rl_navigation.go2_pose_command:main',
-            'go2_rl_nav_actions = rl_navigation.go2_rl_nav_actions:main',
+            'go2_rl_nav_actions_onnx = rl_navigation.go2_rl_nav_actions_onnx:main',
+            'go2_rl_nav_actions_jit = rl_navigation.go2_rl_nav_actions_jit:main'
         ],
     },
 )

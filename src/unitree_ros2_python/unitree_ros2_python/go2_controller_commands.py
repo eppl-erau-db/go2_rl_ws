@@ -21,11 +21,11 @@ class WirelessControl(Node):
             self.wireless_controller_callback,
             10)
         self.twist = Twist()
-        self.up = 0.0  # up
-        self.down = 0.0  # down
-        self.start = 0.0  # start button
-        self.select = 0.0  # select button
-        self.a = 0.0  # A button
+        self.up = 0.0  # UP button state
+        self.down = 0.0  # DOWN button state
+        self.start = 0.0  # START button state
+        self.select = 0.0  # SELECT button state
+        self.a = 0.0  # A button state
         self.b = 0.0  # B button
         self.speed = 1.0  # Max lin speed, m/s
         self.turn = -1.0  # Max ang speed, rad/s (sign convention switch)
@@ -52,7 +52,12 @@ class WirelessControl(Node):
 
         # Publishing the array of button states
         button_msg = Float32MultiArray()
-        button_msg.data = [self.up, self.down, self.start]
+        button_msg.data = [self.up, 
+                           self.down, 
+                           self.start,
+                           self.select,
+                           self.a,
+                           self.b]
 
         # Publish the Twist message
         self.vel_publisher.publish(self.twist)
@@ -71,7 +76,7 @@ class WirelessControl(Node):
 
             # Publish zero button states
             zero_button_msg = Float32MultiArray()
-            zero_button_msg.data = [0.0, 0.0, 0.0]
+            zero_button_msg.data = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
             self.buttons_publisher.publish(zero_button_msg)
 
 
