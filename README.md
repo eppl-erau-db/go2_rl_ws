@@ -87,7 +87,16 @@ Finally, restart your PC, as recommended by Unitree.
 
 ## Body Control Deployment
 
-To deploy, ensure the quadraped is LYING DOWN with SPORT MODE OFF (do so in the app), as support for switching modes is not yet integrated. Tethering the top of the quadruped is also advised as the best way to currently stop testing is through a Ctrl+C command, putting the dog into damping mode. Work is underway for better and safer testing. Currently, when you run the low command publisher, you will need to press start on the remote and then use the joysticks to control the robot movements, to stop hit Ctrl+C in the second terminal.
+To deploy, ensure the quadraped is LYING DOWN with SPORT MODE OFF (do so in the app), as support for switching modes is not yet integrated. Tethering the top of the quadruped is also advised. Work is underway for better and safer testing. Here is the wireless remote control mapping:
+
+UP --> Stand Command
+DOWN --> Sit Command
+START --> Start Walking Command (Deploying RL Actions)
+LEFT JOYSTICK --> Linear Velocity Commands
+RIGHT JOYSTICK --> Angular Velocity Commands
+SELECT --> Stop Walking Command, Goes to Stand Position
+A --> Soft Abort, Similir to Damping from Unitree
+B --> Kill Command, Only for EMERGENCIES
 
 Open a terminal, source unitree_ros and lse_go2_ws, and launch:
 ```bash
