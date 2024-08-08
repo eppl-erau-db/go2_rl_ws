@@ -74,12 +74,12 @@ Then, compile unitree_go, unitree_api, rl_deploy, go2_launch, rl_navigation, rl_
 ```bash
 cd ~/workspaces/go2_rl_ws
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh
-colcon build --packages-select unitree_go &&
 colcon build --packages-select unitree_api &&
-colcon build --packages-select rl_deploy &&
-colcon build --packages-select rl_deploy_nav &&
+colcon build --packages-select unitree_go &&
 colcon build --packages-select unitree_ros2_python --symlink-install &&
 colcon build --packages-select rl_navigation --symlink-install &&
+colcon build --packages-select rl_deploy &&
+colcon build --packages-select rl_deploy_nav &&
 colcon build --packages-select go2_launch
 ```
 
@@ -110,7 +110,7 @@ Open a terminal, source unitree_ros and lse_go2_ws, and launch:
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source ~/workspaces/go2_rl_ws/install/setup.sh &&
 cd ~/workspaces/go2_rl_ws &&
-ros2 launch go2_launch run_obs_nodes.launch.py
+ros2 launch go2_launch run_obs_nodes_onnx.launch.py
 ```
 
 Open a new terminal, and run the low command message publisher:
@@ -146,7 +146,7 @@ Open a new terminal, source unitree_ros and lse_go2_ws, and run navigation actio
 cd /mnt/nvme_partition/ros2_ws/go2_rl_ws &&
 source /mnt/nvme_partition/ros2_ws/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source /mnt/nvme_partition/ros2_ws/go2_rl_ws/install/setup.sh &&
-ros2 run rl_navigation go2_rl_nav_actions
+ros2 run rl_navigation go2_rl_nav_actions_onnx
 ```
 
 Open a new terminal, source unitree_ros and lse_go2_ws, and run navigation commands:
