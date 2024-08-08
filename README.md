@@ -10,6 +10,8 @@ Locomotion models can be found in the share directory of the unitree_ros2_python
 
 Note that the observations tensor has been edited to not include the height scan or the base linear velocities as these are not easily attainable in low state, which the robot has to be in to deliver low level commands. Development is currently underway in LiDAR decoding for height map information and sensor fusion for linear velocity information, as well as support for 3D navigation. 
 
+### FlowCharts
+
 Here is the current configuration of the locomotion policies:
 
 ![RL Control FlowChart](https://github.com/gabearod2/go2_rl_ws/blob/main/images/RL%20CONTROL.jpeg)
