@@ -15,7 +15,7 @@ setup(
         (os.path.join('share', package_name, 'models'),
          glob('share/models/*')),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'unitree_sdk2py'],
     zip_safe=True,
     maintainer='Gabriel Rodriguez',
     maintainer_email='gabearod2@gmail.com',
