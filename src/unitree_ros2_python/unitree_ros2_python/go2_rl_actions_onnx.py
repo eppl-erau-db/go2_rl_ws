@@ -70,7 +70,7 @@ class Go2_RL_Actions(Node):
 
         # Finding and loading the ONNX model - can be changed to desired model
         share_dir = get_package_share_directory('unitree_ros2_python')
-        # pronking gait
+        # pronking gait - do not use v3 or v5 currently
         model_path = os.path.join(share_dir, 'models', 'flat_policy_v5.onnx') 
         self.get_logger().info(f"Model path: {model_path}")
         self.load_onnx_model(model_path)
