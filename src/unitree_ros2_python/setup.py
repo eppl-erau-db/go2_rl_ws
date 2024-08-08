@@ -28,6 +28,8 @@ setup(
             'go2_joint_pos_vel = unitree_ros2_python.go2_joint_pos_vel:main',
             'go2_projected_gravity = unitree_ros2_python.go2_projected_gravity:main',
             'go2_controller_commands = unitree_ros2_python.go2_controller_commands:main',
+            'go2_motion_switcher = unitree_ros2_python.go2_motion_switcher:main',
+            'go2_binary_foot_contacts = unitree_ros2_python.go2_binary_foot_contacts:main',
             'go2_rl_actions_onnx = unitree_ros2_python.go2_rl_actions_onnx:main',
             'go2_rl_actions_jit = unitree_ros2_python.go2_rl_actions_jit:main',
             'go2_height_map = unitree_ros2_python.go2_height_map:main',
