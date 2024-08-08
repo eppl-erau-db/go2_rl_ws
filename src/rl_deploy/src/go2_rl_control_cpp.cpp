@@ -223,8 +223,8 @@ private:
             cmd_msg_.motor_cmd[i].mode = 0x01; // working mode
             cmd_msg_.motor_cmd[i].dq = 0.0;
             cmd_msg_.motor_cmd[i].tau = 0.0;
-            cmd_msg_.motor_cmd[i].kp = 40.0;
-            cmd_msg_.motor_cmd[i].kd = 5.0;    
+            cmd_msg_.motor_cmd[i].kp = 30.0; // Lower to be able to slowly sit
+            cmd_msg_.motor_cmd[i].kd = 10.0; // Higher to be able to slowly sit
         }
 
         // Check motor cmd CRC
