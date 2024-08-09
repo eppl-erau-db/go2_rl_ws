@@ -129,9 +129,9 @@ To deploy, ensure the quadraped is standing in Sport Mode or AI Mode. The pose c
 
 Open a terminal, source unitree_ros and lse_go2_ws, and create a pose command:
 ```bash
-cd /mnt/nvme_partition/ros2_ws/go2_rl_ws &&
-source /mnt/nvme_partition/ros2_ws/go2_rl_ws/src/unitree_ros2/setup.sh &&
-source /mnt/nvme_partition/ros2_ws/go2_rl_ws/install/setup.sh &&
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source ~/workspaces/go2_rl_ws/install/setup.sh &&
+cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_navigation go2_pose_command 
 ```
 
@@ -145,17 +145,17 @@ ros2 run unitree_ros2_python go2_projected_gravity
 
 Open a new terminal, source unitree_ros and lse_go2_ws, and run navigation action inference:
 ```bash
-cd /mnt/nvme_partition/ros2_ws/go2_rl_ws &&
-source /mnt/nvme_partition/ros2_ws/go2_rl_ws/src/unitree_ros2/setup.sh &&
-source /mnt/nvme_partition/ros2_ws/go2_rl_ws/install/setup.sh &&
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source ~/workspaces/go2_rl_ws/install/setup.sh &&
+cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_navigation go2_rl_nav_actions_onnx
 ```
 
 Open a new terminal, source unitree_ros and lse_go2_ws, and run navigation commands:
 ```bash
-cd /mnt/nvme_partition/ros2_ws/go2_rl_ws &&
-source /mnt/nvme_partition/ros2_ws/go2_rl_ws/src/unitree_ros2/setup.sh &&
-source /mnt/nvme_partition/ros2_ws/go2_rl_ws/install/setup.sh &&
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source ~/workspaces/go2_rl_ws/install/setup.sh &&
+cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_deploy_nav go2_rl_nav
 ```
 
