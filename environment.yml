@@ -13,6 +13,7 @@ dependencies:
   - pip
   - pip:
     - onnxruntime-gpu
+    - onnxruntime
     
 
 
