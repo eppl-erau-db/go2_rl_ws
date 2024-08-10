@@ -21,7 +21,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 
 # Include directories
-include_directories(include)
+include_directories(include include/common include/nlohmann)
 link_directories(src)
 
 # Add executable for the motion switcher node
