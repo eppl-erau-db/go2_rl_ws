@@ -91,6 +91,7 @@ Create executables:
 ```bash
 chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/ai_switcher
 chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/sport_switcher
+chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/check_mode
 ```
 
 Finally, restart your PC, as recommended by Unitree.
