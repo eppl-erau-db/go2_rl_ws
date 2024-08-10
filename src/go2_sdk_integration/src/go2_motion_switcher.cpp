@@ -1,45 +1,31 @@
 #include "rclcpp/rclcpp.hpp"
-#include "unitree/robot/go2/motion_switcher/motion_switcher_client.hpp"
+#include <cstdlib>
 
-class Go2MotionSwitcher : public rclcpp::Node
+class MotionSwitcherNode : public rclcpp::Node
 {
 public:
-    Go2MotionSwitcher() : Node("go2_motion_switcher")
+    MotionSwitcherNode() : Node("motion_switcher_node")
     {
-        // Create MotionSwitcherClient instance
-        motion_switcher_client_ = std::make_shared<unitree_sdk2::MotionSwitcherClient>();
+        this->declare_parameter<std::string>("network_interface", "enp114s0");
 
-        // Check current mode
-        std::string current_form;
-        std::string current_mode;
-        int32_t check_result = motion_switcher_client_->CheckMode(current_form, current_mode);
-        if (check_result == 0) {
-            RCLCPP_INFO(this->get_logger(), "Current mode: %s, Form: %s", current_mode.c_str(), current_form.c_str());
-            
-            // Set motion mode to "ai" if not already set
-            if (current_mode != "ai") {
-                int32_t select_result = motion_switcher_client_->SelectMode("ai");
-                if (select_result == 0) {
-                    RCLCPP_INFO(this->get_logger(), "Mode switched to ai successfully.");
-                } else {
-                    RCLCPP_ERROR(this->get_logger(), "Failed to switch mode. Error code: %d", select_result);
-                }
-            } else {
-                RCLCPP_INFO(this->get_logger(), "Mode is already set to ai.");
-            }
-        } else {
-            RCLCPP_ERROR(this->get_logger(), "Failed to check mode. Error code: %d", check_result);
+        std::string network_interface;
+        this->get_parameter("network_interface", network_interface);
+
+        std::string command = "lib/go2_sdk_integration/motion_switcher " + network_interface;
+
+        RCLCPP_INFO(this->get_logger(), "Executing: %s", command.c_str());
+        int result = std::system(command.c_str());
+
+        if (result != 0) {
+            RCLCPP_ERROR(this->get_logger(), "Failed to execute motion_switcher with error code: %d", result);
         }
     }
-
-private:
-    std::shared_ptr<unitree_sdk2::MotionSwitcherClient> motion_switcher_client_;
 };
 
-int main(int argc, char * argv[])
+int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<Go2MotionSwitcher>());
+    rclcpp::spin(std::make_shared<MotionSwitcherNode>());
     rclcpp::shutdown();
     return 0;
 }
