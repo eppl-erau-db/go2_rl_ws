@@ -72,14 +72,16 @@ export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces>
                         </Interfaces></General></Domain></CycloneDDS>'
 ```
 
-Then, compile unitree_go, unitree_api, rl_deploy, go2_launch, rl_navigation, rl_deploy_nav and unitree_ros2_python packages:
+Then, compile unitree_go, unitree_api, rl_deploy, go2_launch, rl_navigation, rl_deploy_nav, go2_lidar_decoder and unitree_ros2_python packages:
 ```bash
-cd ~/workspaces/go2_rl_ws
-source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh
+cd ~/workspaces/go2_rl_ws &&
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 colcon build --packages-select unitree_api &&
 colcon build --packages-select unitree_go &&
 colcon build --packages-select unitree_ros2_python --symlink-install &&
 colcon build --packages-select rl_navigation --symlink-install &&
+colcon build --packages-select go2_lidar_decoder --symlink-install &&
+colcon build --packages-select go2_sdk_integration &&
 colcon build --packages-select rl_deploy &&
 colcon build --packages-select rl_deploy_nav &&
 colcon build --packages-select go2_launch

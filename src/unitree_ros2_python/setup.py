@@ -15,7 +15,7 @@ setup(
         (os.path.join('share', package_name, 'models'),
          glob('share/models/*')),
     ],
-    install_requires=['setuptools', 'unitree_sdk2py'],
+    install_requires=['setuptools'],
     zip_safe=True,
     maintainer='Gabriel Rodriguez',
     maintainer_email='gabearod2@gmail.com',
@@ -31,11 +31,7 @@ setup(
             'go2_motion_switcher = unitree_ros2_python.go2_motion_switcher:main',
             'go2_binary_foot_contacts = unitree_ros2_python.go2_binary_foot_contacts:main',
             'go2_rl_actions_onnx = unitree_ros2_python.go2_rl_actions_onnx:main',
-            'go2_rl_actions_jit = unitree_ros2_python.go2_rl_actions_jit:main',
-            'go2_height_map = unitree_ros2_python.go2_height_map:main',
-            'go2_height_map_visualizer = unitree_ros2_python.go2_height_map_visualizer:main',
-            'go2_depth_map = unitree_ros2_python.go2_depth_map:main',
-            'go2_depth_map_visualizer = unitree_ros2_python.go2_depth_map_visualizer:main'
+            'go2_rl_actions_jit = unitree_ros2_python.go2_rl_actions_jit:main'
         ],
     },
 )
