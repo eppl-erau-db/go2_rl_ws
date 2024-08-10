@@ -18,8 +18,9 @@ endif()
 # Specify include directories
 include_directories(include include/common)
 
-# Specify the node executable
-add_executable(go2_motion_switcher src/go2_motion_switcher.cpp)
+# Specify the node executables
+add_executable(go2_ai_switcher src/go2_ai_switcher.cpp)
+add_executable(go2_sport_switcher src/go2_sport_switcher.cpp)
 
 # Find ROS dependencies
 find_package(ament_cmake REQUIRED)
@@ -28,7 +29,13 @@ find_package(std_msgs REQUIRED)
 find_package(rosbag2_cpp REQUIRED)
 
 # Link libraries
-ament_target_dependencies(go2_motion_switcher
+ament_target_dependencies(go2_ai_switcher
+  rclcpp
+  std_msgs
+  rosbag2_cpp
+)
+
+ament_target_dependencies(go2_sport_switcher
   rclcpp
   std_msgs
   rosbag2_cpp
@@ -36,13 +43,15 @@ ament_target_dependencies(go2_motion_switcher
 
 # Install targets
 install(TARGETS
-  go2_motion_switcher
+  go2_ai_switcher
+  go2_sport_switcher
   DESTINATION lib/${PROJECT_NAME})
 
-# If the motion_switcher executable is in the bin directory of your package
-# Ensure it is installed correctly
-install(FILES bin/motion_switcher
-  DESTINATION lib/${PROJECT_NAME})
+# Install the executables from the bin directory if they exist
+install(FILES bin/ai_switcher
+        DESTINATION lib/${PROJECT_NAME})
+install(FILES bin/sport_switcher
+        DESTINATION lib/${PROJECT_NAME})
 
 # Testing support
 if(BUILD_TESTING)
@@ -51,3 +60,4 @@ if(BUILD_TESTING)
 endif()
 
 ament_package()
+

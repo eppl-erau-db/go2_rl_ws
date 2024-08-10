@@ -85,7 +85,12 @@ colcon build --packages-select go2_sdk_integration &&
 colcon build --packages-select rl_deploy &&
 colcon build --packages-select rl_deploy_nav &&
 colcon build --packages-select go2_launch &&
-chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/motion_switcher
+```
+
+Create executables:
+```bash
+chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/ai_switcher
+chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/sport_switcher
 ```
 
 Finally, restart your PC, as recommended by Unitree.
