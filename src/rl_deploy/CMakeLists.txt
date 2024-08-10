@@ -16,7 +16,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 
-include_directories(include include/common include/nlohmann)
+include_directories(include include/common)
 link_directories(src)
 
 set (
