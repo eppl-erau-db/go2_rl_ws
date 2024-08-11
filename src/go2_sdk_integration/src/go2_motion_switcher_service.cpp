@@ -39,7 +39,7 @@ private:
     void handle_service(const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
                         std::shared_ptr<std_srvs::srv::SetBool::Response> response)
     {
-        // true is sport/normal mode and false is ai
+        // True is sport/normal mode and false is ai
         if (request->data) 
         {
             mode_request_ = "normal";

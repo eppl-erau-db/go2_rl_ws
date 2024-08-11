@@ -24,7 +24,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'go2_base_vel = unitree_ros2_python.go2_base_vel:main',
+            'go2_base_ang_vel = unitree_ros2_python.go2_base_ang_vel:main',
             'go2_joint_pos_vel = unitree_ros2_python.go2_joint_pos_vel:main',
             'go2_projected_gravity = unitree_ros2_python.go2_projected_gravity:main',
             'go2_controller_commands = unitree_ros2_python.go2_controller_commands:main',

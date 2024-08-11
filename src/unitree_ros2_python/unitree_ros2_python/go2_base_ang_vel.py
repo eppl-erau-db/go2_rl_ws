@@ -8,10 +8,10 @@ import numpy as np
 
 class BaseVelocityNode(Node):
     def __init__(self):
-        super().__init__("base_velocity_publisher")
+        super().__init__("base_ang_vel_publisher")
         self.publisher = self.create_publisher(
             Float32MultiArray,
-            'base_vel',
+            'base_ang_vel',
             10
         )
         self.subscription = self.create_subscription(

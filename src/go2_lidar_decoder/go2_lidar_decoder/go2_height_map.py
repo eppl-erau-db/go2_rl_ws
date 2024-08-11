@@ -17,7 +17,7 @@ class LidarToHeightMap(Node):
         self.declare_parameter('width', 1.0)   # Width in meters
         self.declare_parameter('min_height', -1.0)
         self.declare_parameter('max_height', 1.0)
-        self.declare_parameter('offset', 0.31)
+        self.declare_parameter('offset', 0.25)
 
         self.resolution = self.get_parameter('resolution').get_parameter_value().double_value
         self.length = self.get_parameter('length').get_parameter_value().double_value
@@ -72,12 +72,13 @@ class LidarToHeightMap(Node):
         # Compute the rotation matrix around the y-axis
         rotation_matrix_1 = tf_transformations.euler_matrix(0.0, angle_y, 0.0)
 
-        # Transform points from LiDAR frame to base frame (only applying rotation)
+        # Transform points from LiDAR frame same direction as base frame (only applying rotation)
         points_base = (rotation_matrix_1[:3, :3] @ points_homogeneous[:, :3].T).T
 
         # Reset the height map
         self.height_map.fill(self.min_height)
 
+        # Filling the height map
         for point in points_base:
             x, y, z = point
             i = int((x + (self.length / 2)) / self.resolution)

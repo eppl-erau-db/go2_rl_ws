@@ -22,8 +22,8 @@ class Go2_RL_Actions(Node):
         # Creating subscriptions to obs topics
         self.create_subscription(
             Float32MultiArray,
-            'base_vel',
-            self.base_vel_callback,
+            'base_ang_vel',
+            self.base_ang_vel_callback,
             10)
         self.create_subscription(
             Float32MultiArray,
@@ -45,10 +45,10 @@ class Go2_RL_Actions(Node):
         self.init_raw_action = None
         self.raw_actions = None
         self.processed_actions = None
-        self.base_vel = None
-        self.projected_gravity = None
-        self.cmd_vel = None
-        self.joint_pos_vel = None
+        self.base_ang_vel = np.zeros(3)  # Example size, adjust as needed
+        self.projected_gravity = np.zeros(3)  # Example size, adjust as needed
+        self.cmd_vel = [0.0, 0.0, 0.0]
+        self.joint_pos_vel = np.zeros(24)  # Example size, adjust as needed
         self.joint_pos_init = None
 
         # Defaults and scale from isaac lab:
@@ -82,53 +82,58 @@ class Go2_RL_Actions(Node):
             self.generate_actions)
 
     def load_onnx_model(self, model_path):
-        self.ort_session = ort.InferenceSession(model_path)
-        
-    def base_vel_callback(self, msg):
-        self.base_vel = msg.data
+        try:
+            self.ort_session = ort.InferenceSession(model_path)
+        except Exception as e:
+            self.get_logger().error(f"Failed to load ONNX model: {e}")
+
+    def base_ang_vel_callback(self, msg):
+        self.base_ang_vel = np.array(msg.data, dtype=np.float32)
 
     def projected_gravity_callback(self, msg):
-        self.projected_gravity = msg.data
+        self.projected_gravity = np.array(msg.data, dtype=np.float32)
 
     def cmd_vel_callback(self, msg):
         # Converting twist message to array for concatenation
-        self.cmd_vel = array.array('f',
-                                   [msg.linear.x,
-                                    msg.linear.y,
-                                    msg.angular.z])
+        self.cmd_vel = [msg.linear.x, msg.linear.y, msg.angular.z]
 
     def joint_pos_vel_callback(self, msg):
-        self.joint_pos_vel = msg.data
+        self.joint_pos_vel = np.array(msg.data, dtype=np.float32)
         # The first 12 elements are joint positions
-        self.joint_pos_init = msg.data[:12]
+        self.joint_pos_init = self.joint_pos_vel[:12]
         # Getting initial raw action
-        self.init_raw_action = (self.joint_pos_init-self.motor_qs_defaults)/self.scale_factor
+        self.init_raw_action = (self.joint_pos_init - self.motor_qs_defaults) / self.scale_factor
 
     def generate_actions(self):
-        # Accounting for drift in wireless remote or no cmd_vel
+        # Check for valid inputs
         if self.cmd_vel is None or all(abs(v) < 0.1 for v in self.cmd_vel):
-            self.cmd_vel = array.array('f', [0.0, 0.0, 0.0])
+            self.cmd_vel = [0.0, 0.0, 0.0]
 
         # Creating obs vector (without last action)
-        obs = np.concatenate((self.base_vel,
-                              self.projected_gravity,
-                              self.cmd_vel,
-                              self.joint_pos_vel), axis=None)
+        obs = np.concatenate((
+            self.base_ang_vel,
+            self.projected_gravity,
+            self.cmd_vel,
+            self.joint_pos_vel
+        ))
 
         # Adding last action or first raw action for obs
         if self.raw_actions is not None:
-            obs = np.concatenate((obs, self.raw_actions), axis=None)
+            obs = np.concatenate((obs, self.raw_actions))
         else:
-            obs = np.concatenate((obs, self.init_raw_action), axis=None)
+            obs = np.concatenate((obs, self.init_raw_action))
 
         # Make obs into np array & reshape for the batch size
-        obs = obs.astype(np.float32)
-        obs = obs.reshape(1, -1)
+        obs = obs.astype(np.float32).reshape(1, -1)
 
         # Run inference
-        ort_inputs = {self.ort_session.get_inputs()[0].name: obs}
-        ort_outs = self.ort_session.run(None, ort_inputs)
-        self.raw_actions = ort_outs[0].flatten()
+        try:
+            ort_inputs = {self.ort_session.get_inputs()[0].name: obs}
+            ort_outs = self.ort_session.run(None, ort_inputs)
+            self.raw_actions = ort_outs[0].flatten()
+        except Exception as e:
+            self.get_logger().error(f"Inference failed: {e}")
+            self.raw_actions = np.zeros_like(self.init_raw_action)
 
         # Accounting for offset and scale (Isaac Lab)
         self.processed_actions = (self.raw_actions * self.scale_factor + self.motor_qs_defaults).tolist()
@@ -147,11 +152,35 @@ class Go2_RL_Actions(Node):
             self.processed_actions[10]  # 10 -> RL_calf_joint  to RL_calf  -> 11
         ]
 
-        # TODO: ADD MOTOR POS LIMITING TO REDUCED LIKELIHOOD OF DAMAGE
+        # Motor limits
+        self.motor_limits_ordered = [
+            [-0.837, 0.837],  # Front Hip
+            [-3.490, 1.570],  # Front Thigh
+            [-2.720, 0.837],  # Front Calf
+            [-0.837, 0.837],  # Front Hip
+            [-3.490, 1.570],  # Front Thigh
+            [-2.720, 0.837],  # Front Calf
+            [-0.837, 0.837],  # Rear Hip
+            [-4.530, 1.570],  # Rear Thigh
+            [-2.720, 0.837],  # Rear Calf
+            [-0.837, 0.837],  # Rear Hip
+            [-4.530, 1.570],  # Rear Thigh
+            [-2.720, 0.837]   # Rear Calf
+        ]
+
+        # Clipping actions by a scale of the motor limits:
+        clipped_actions_ordered = [0]*12
+        for i, action in enumerate(self.processed_actions_ordered):
+            min_limit, max_limit = self.motor_limits_ordered[i]
+
+            # Applying scale factor
+            min_limit = min_limit * 0.95
+            max_limit = max_limit * 0.95
+            clipped_actions_ordered[i] = max(min(action, max_limit), min_limit)
 
         # Publishing action messages
         action_msg = Float32MultiArray()
-        action_msg.data = self.processed_actions_ordered
+        action_msg.data = clipped_actions_ordered
         self.publisher.publish(action_msg)
 
 
