@@ -84,7 +84,7 @@ colcon build --packages-select go2_lidar_decoder --symlink-install &&
 colcon build --packages-select go2_sdk_integration &&
 colcon build --packages-select rl_deploy &&
 colcon build --packages-select rl_deploy_nav &&
-colcon build --packages-select go2_launch &&
+colcon build --packages-select go2_launch
 ```
 
 Create executables:
