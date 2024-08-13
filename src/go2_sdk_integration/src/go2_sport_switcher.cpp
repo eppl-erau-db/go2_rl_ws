@@ -1,6 +1,5 @@
 #include "rclcpp/rclcpp.hpp"
 #include <cstdlib>
-
 #include "unitree_go/msg/sport_mode_state.hpp"
 #include "unitree_api/msg/request.hpp"
 #include "common/ros2_sport_client.h"

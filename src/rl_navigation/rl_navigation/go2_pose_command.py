@@ -18,12 +18,6 @@ class TeleopPoseCommand(Node):
             'cmd_pose',
             10
         )
-        self.state_subscriber = self.create_subscription(
-            SportModeState,
-            'rt/sportmodestate',
-            self.state_callback,
-            10
-        )
 
         # Initialize cmd pose.
         self.cmd_pose = [0.0, 0.0, 0.0, 0.0]
@@ -38,18 +32,9 @@ class TeleopPoseCommand(Node):
         # Check for input at regular intervals
         self.timer = self.create_timer(0.1, self.check_input)
 
-    def state_callback(self, msg):
-        # Obtaining current pose
-        self.pose = np.array(msg.position, dtype=np.float32)
-        self.heading = np.array(msg.imu_state.rpy[2])
-        self.current_pose = np.concatenate(self.pose, self.heading, axis=None)
-
     def check_input(self):
         if self.is_input_available():
             self.get_pose_command()
-
-        # Subtracting current pose
-        self.cmd_pose = self.cmd_pose - self.current_pose
 
         # Publish the pose command
         msg = Float32MultiArray(data=self.cmd_pose)

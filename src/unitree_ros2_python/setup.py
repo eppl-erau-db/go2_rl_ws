@@ -31,6 +31,7 @@ setup(
             'go2_motion_switcher = unitree_ros2_python.go2_motion_switcher:main',
             'go2_binary_foot_contacts = unitree_ros2_python.go2_binary_foot_contacts:main',
             'go2_rl_actions_onnx = unitree_ros2_python.go2_rl_actions_onnx:main',
+            'go2_rl_rough_actions_onnx = unitree_ros2_python.go2_rl_rough_actions_onnx:main',
             'go2_rl_actions_jit = unitree_ros2_python.go2_rl_actions_jit:main'
         ],
     },

@@ -89,9 +89,11 @@ colcon build --packages-select go2_launch
 
 Create executables:
 ```bash
-chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/ai_switcher
-chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/sport_switcher
-chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/check_mode
+chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/ai_switcher &&
+chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/sport_switcher &&
+chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/ai_switcher &&
+chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/shutdown_audio_client &&
+chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/shutdown_motion_client
 ```
 
 Finally, restart your PC, as recommended by Unitree.
@@ -118,14 +120,31 @@ A --> Soft Abort, Similar to Damping from Unitree
 
 B --> Kill Command, Only for EMERGENCIES
 
-### Terminal Commands
+### Terminal Commands (Flat Policy)
 
 Open a terminal, source unitree_ros and lse_go2_ws, and launch:
 ```bash
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source ~/workspaces/go2_rl_ws/install/setup.sh &&
 cd ~/workspaces/go2_rl_ws &&
-ros2 launch go2_launch run_obs_nodes_onnx.launch.py
+ros2 launch go2_launch go2_walk_nodes_onnx.launch.py
+```
+
+Open a new terminal, and run the low command message publisher:
+```bash
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source ~/workspaces/go2_rl_ws/install/setup.sh &&
+cd ~/workspaces/go2_rl_ws &&
+ros2 run rl_deploy go2_rl_control
+
+### Terminal Commands (Rough Policy)
+
+Open a terminal, source unitree_ros and lse_go2_ws, and launch:
+```bash
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source ~/workspaces/go2_rl_ws/install/setup.sh &&
+cd ~/workspaces/go2_rl_ws &&
+ros2 launch go2_launch go2_rough_walk_nodes_onnx.launch.py
 ```
 
 Open a new terminal, and run the low command message publisher:
@@ -188,4 +207,4 @@ This is an experimental code, we are not responsible for any damages! Use at you
 
 To find the training environment I used through Isaac Lab, follow my forked [Isaac Lab repo](https://github.com/gabearod2/IsaacLab/tree/rl_deployment). To edit which RL policy you use, edit go2_rl_actions.py to use a different ONNX model, ensuring it takes the same input as the current models.  
 
-Future work is to train the quadruped in the the following way: [Extreme Parkour](https://github.com/chengxuxin/extreme-parkour.git) for the best results.
+Future work is to train the quadruped in similar fashion to the following, [Extreme Parkour](https://github.com/chengxuxin/extreme-parkour.git) for the best results.

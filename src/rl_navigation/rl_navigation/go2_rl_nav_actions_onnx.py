@@ -20,7 +20,7 @@ class Go2_RL_Nav_Actions(Node):
         # Creating subscriptions to obs topics
         self.create_subscription(
             SportModeState,
-            'rt/sportmodestate',
+            'sportmodestate',
             self.state_callback,
             10)
         self.create_subscription(
@@ -37,9 +37,10 @@ class Go2_RL_Nav_Actions(Node):
         # Initializing variables
         self.nav_actions = None
         self.processed_actions = None
-        self.base_vel = None
-        self.projected_gravity = None
-        self.cmd_pose = [0.0, 0.0, 0.0, 0.0]
+        self.base_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        self.projected_gravity = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        self.cmd_pose = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
+        self.current_pose = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
 
         # Defaults and scale from isaac lab:
         self.pose_cmd_defaults = np.array([0.0, 0.0, 0.0], dtype=np.float32)
@@ -60,7 +61,10 @@ class Go2_RL_Nav_Actions(Node):
         self.ort_session = ort.InferenceSession(model_path)
 
     def state_callback(self, msg):
-        self.base_vel = np.array(msg.velocity, dtype=np.float32)
+        self.base_vel = np.array([msg.velocity], dtype=np.float32)
+        self.current_xyz = np.array(msg.position, dtype=np.float32)
+        self.current_heading = np.array([0.0], dtype = np.float32)
+        self.current_pose = np.concatenate((self.current_xyz, self.current_heading), axis=None)
 
     def projected_gravity_callback(self, msg):
         self.projected_gravity = msg.data
@@ -77,7 +81,7 @@ class Go2_RL_Nav_Actions(Node):
         # Creating obs vector (without last action)
         obs = np.concatenate((self.base_vel,
                               self.projected_gravity,
-                              self.cmd_pose), axis=None)
+                              self.cmd_pose - self.current_pose), axis=None)
 
         # Log the obs vector and its size
         self.get_logger().info(f"Obs vector: {np.array2string(obs, precision=3, separator=', ')}")

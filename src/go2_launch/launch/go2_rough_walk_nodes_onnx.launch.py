@@ -32,12 +32,17 @@ def generate_launch_description():
         ),
         Node(
             package='unitree_ros2_python',
+            executable='go2_binary_foot_contacts',
+            name='go2_binary_foot_contacts'
+        ),
+        Node(
+            package='unitree_ros2_python',
             executable='go2_controller_commands',
             name='go2_controller_commands'
         ),
         Node(
             package='unitree_ros2_python',
-            executable='go2_rl_actions_onnx',
-            name='go2_rl_actions_onnx'
+            executable='go2_rl_rough_actions_onnx',
+            name='go2_rl_rough_actions_onnx'
         ),
     ])

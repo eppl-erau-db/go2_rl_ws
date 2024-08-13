@@ -263,7 +263,7 @@ private:
             cmd_msg_.motor_cmd[i].mode = 0x01;
             cmd_msg_.motor_cmd[i].dq = 0.0;
             cmd_msg_.motor_cmd[i].tau = 0.0;
-            cmd_msg_.motor_cmd[i].kp = 25.0; // From sim 
+            cmd_msg_.motor_cmd[i].kp = 20.0; // From sim --> 25.0 for rough
             cmd_msg_.motor_cmd[i].kd = 0.5; // From sim
             cmd_msg_.motor_cmd[i].reserve[0] = 0;
             cmd_msg_.motor_cmd[i].reserve[1] = 0;

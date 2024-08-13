@@ -26,6 +26,8 @@ include_directories(
 add_executable(go2_ai_switcher src/go2_ai_switcher.cpp src/common/ros2_sport_client.cpp)
 add_executable(go2_sport_switcher src/go2_sport_switcher.cpp src/common/ros2_sport_client.cpp)
 add_executable(go2_motion_switcher_service src/go2_motion_switcher_service.cpp src/common/ros2_sport_client.cpp)
+add_executable(go2_motion_shut_off src/go2_motion_shut_off.cpp)
+add_executable(go2_audio_shut_off src/go2_audio_shut_off.cpp)
 
 # Find ROS dependencies
 find_package(ament_cmake REQUIRED)
@@ -61,11 +63,21 @@ ament_target_dependencies(go2_motion_switcher_service
   unitree_go
 )
 
+ament_target_dependencies(go2_motion_shut_off
+  rclcpp
+)
+
+ament_target_dependencies(go2_audio_shut_off
+  rclcpp
+)
+
 # Install targets
 install(TARGETS
   go2_ai_switcher
   go2_sport_switcher
   go2_motion_switcher_service
+  go2_audio_shut_off
+  go2_motion_shut_off
   DESTINATION lib/${PROJECT_NAME})
 
 # Optionally install pre-built executables if they exist in bin/
@@ -74,6 +86,10 @@ install(FILES bin/ai_switcher
 install(FILES bin/sport_switcher
         DESTINATION lib/${PROJECT_NAME})
 install(FILES bin/check_mode
+        DESTINATION lib/${PROJECT_NAME})
+install(FILES bin/shutdown_motion_client
+        DESTINATION lib/${PROJECT_NAME})
+install(FILES bin/shutdown_audio_client
         DESTINATION lib/${PROJECT_NAME})
 
 # Testing support
