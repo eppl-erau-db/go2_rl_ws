@@ -84,6 +84,7 @@ def generate_launch_description():
 
 Then, make the setup.bash an executable and run it:
 ```bash
+cd ~/workspaces/go2_rl_ws &&
 chmod +x setup.bash &&
 source ./setup.bash
 ```
