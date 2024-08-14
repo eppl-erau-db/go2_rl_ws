@@ -80,18 +80,6 @@ install(TARGETS
   go2_motion_shut_off
   DESTINATION lib/${PROJECT_NAME})
 
-# Optionally install pre-built executables if they exist in bin/
-install(FILES bin/ai_switcher
-        DESTINATION lib/${PROJECT_NAME})
-install(FILES bin/sport_switcher
-        DESTINATION lib/${PROJECT_NAME})
-install(FILES bin/check_mode
-        DESTINATION lib/${PROJECT_NAME})
-install(FILES bin/shutdown_motion_client
-        DESTINATION lib/${PROJECT_NAME})
-install(FILES bin/shutdown_audio_client
-        DESTINATION lib/${PROJECT_NAME})
-
 # Testing support
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

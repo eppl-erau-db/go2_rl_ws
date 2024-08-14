@@ -32,7 +32,7 @@ private:
     void switch_to_AI()
     {
         // creating, logging and executing command
-        std::string command = "install/go2_sdk_integration/lib/go2_sdk_integration/ai_switcher " + network_interface_;
+        std::string command = "unitree_sdk2/build/bin/ai_switcher " + network_interface_;
         RCLCPP_INFO(this->get_logger(), "Executing: %s", command.c_str());
         int result = std::system(command.c_str());
 

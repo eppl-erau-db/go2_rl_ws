@@ -57,7 +57,7 @@ Connecting the ethernet cord to the quadruped, get the name of the connection:
 ifconfig
 ```
 
-After using ifconfig to get name of connection, edit the setup.sh file, using enp114s0 as an example:
+After using ifconfig to get name of connection, edit the unitree_ros2's setup.sh file. Using enp114s0 as an example:
 ```bash
 sudo gedit ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh
 ```
@@ -72,28 +72,20 @@ export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces>
                         </Interfaces></General></Domain></CycloneDDS>'
 ```
 
-Then, compile unitree_go, unitree_api, rl_deploy, go2_launch, rl_navigation, rl_deploy_nav, go2_lidar_decoder and unitree_ros2_python packages:
+Also using the name of the connection, you will have to set it as the paramter in the launch files, for the basic deployment example you will only have to update go2_walk_nodes_onnx.launch.py. Again using enp114s0 as an example:
 ```bash
-cd ~/workspaces/go2_rl_ws &&
-source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
-colcon build --packages-select unitree_api &&
-colcon build --packages-select unitree_go &&
-colcon build --packages-select unitree_ros2_python --symlink-install &&
-colcon build --packages-select rl_navigation --symlink-install &&
-colcon build --packages-select go2_lidar_decoder --symlink-install &&
-colcon build --packages-select go2_sdk_integration &&
-colcon build --packages-select rl_deploy &&
-colcon build --packages-select rl_deploy_nav &&
-colcon build --packages-select go2_launch
+gedit ~/workspaces/go2_rl_ws/src/go2_launch/launch/go2_walk_nodes_onnx.launch.py
+```
+```bash
+def generate_launch_description():
+    # Shared parameters
+    shared_params = {'network_interface': "enp114s0"}  # TODO: CHANGE TO YOUR INTERFACE NAME
 ```
 
-Create executables:
+Then, make the setup.bash an executable and run it:
 ```bash
-chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/ai_switcher &&
-chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/sport_switcher &&
-chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/ai_switcher &&
-chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/shutdown_audio_client &&
-chmod +x install/go2_sdk_integration/lib/go2_sdk_integration/shutdown_motion_client
+chmod +x setup.bash &&
+source ./setup.bash
 ```
 
 Finally, restart your PC, as recommended by Unitree.

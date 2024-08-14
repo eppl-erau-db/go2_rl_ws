@@ -20,7 +20,7 @@ private:
     void shut_off_audio()
     {
         // creating, logging, and executing command
-        std::string command = "install/go2_sdk_integration/lib/go2_sdk_integration/shutdown_audio_client " + network_interface_;
+        std::string command = "unitree_sdk2/build/bin/shutdown_audio_client " + network_interface_;
         RCLCPP_INFO(this->get_logger(), "Executing: %s", command.c_str());
         int result = std::system(command.c_str());
 

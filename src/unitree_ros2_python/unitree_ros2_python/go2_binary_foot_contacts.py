@@ -26,26 +26,18 @@ class BinaryFootContactsNode(Node):
     def lowstate_callback(self, msg):
         # Extract foot contact data from low state
         self.foot_forces = np.array([
-            msg.foot_force[0],
             msg.foot_force[1],
-            msg.foot_force[2],
-            msg.foot_force[3]
+            msg.foot_force[0],
+            msg.foot_force[3],
+            msg.foot_force[2]
         ])
 
-        # Create binary contacts
+        # Create binary contacts - needs to be edited
         for index, force in enumerate(self.foot_forces):
             self.binary_foot_contacts[index] = float(force > 40.0)
 
-        # Reorder foot contacts
-        self.binary_foot_contacts_ordered = [
-            self.binary_foot_contacts[1],  # FL_foot
-            self.binary_foot_contacts[0],  # FR_foot
-            self.binary_foot_contacts[3],  # RL_foot
-            self.binary_foot_contacts[2],  # RR_foot (corrected from the original)
-        ]
-
         binary_foot_contacts_msg = Float32MultiArray()
-        binary_foot_contacts_msg.data = self.binary_foot_contacts_ordered
+        binary_foot_contacts_msg.data = self.binary_foot_contacts
         self.publisher.publish(binary_foot_contacts_msg)
 
 
