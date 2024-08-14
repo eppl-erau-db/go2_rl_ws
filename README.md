@@ -136,10 +136,11 @@ source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source ~/workspaces/go2_rl_ws/install/setup.sh &&
 cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_deploy go2_rl_control
+```
 
 ### Terminal Commands (Rough Policy)
 
-Open a terminal, source unitree_ros and lse_go2_ws, and launch:
+Open a terminal, source unitree_ros and go2_rl_ws, and launch:
 ```bash
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source ~/workspaces/go2_rl_ws/install/setup.sh &&
@@ -159,7 +160,7 @@ ros2 run rl_deploy go2_rl_control
 
 To deploy, ensure the quadraped is standing in Sport Mode or AI Mode. The pose commands should be sent in the world frame. Ensure that the z command is around 0.35 [m].
 
-Open a terminal, source unitree_ros and lse_go2_ws, and create a pose command:
+Open a terminal, source unitree_ros and go2_rl_ws, and create a pose command:
 ```bash
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source ~/workspaces/go2_rl_ws/install/setup.sh &&
@@ -167,7 +168,7 @@ cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_navigation go2_pose_command 
 ```
 
-Open a new terminal, source unitree_ros and lse_go2_ws, and run the projected gravity publisher:
+Open a new terminal, source unitree_ros and go2_rl_ws, and run the projected gravity publisher:
 ```bash
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source ~/workspaces/go2_rl_ws/install/setup.sh &&
@@ -175,7 +176,7 @@ cd ~/workspaces/go2_rl_ws &&
 ros2 run unitree_ros2_python go2_projected_gravity
 ```
 
-Open a new terminal, source unitree_ros and lse_go2_ws, and run navigation action inference:
+Open a new terminal, source unitree_ros and go2_rl_ws, and run navigation action inference:
 ```bash
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source ~/workspaces/go2_rl_ws/install/setup.sh &&
@@ -183,7 +184,7 @@ cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_navigation go2_rl_nav_actions_onnx
 ```
 
-Open a new terminal, source unitree_ros and lse_go2_ws, and run navigation commands:
+Open a new terminal, source unitree_ros and go2_rl_ws, and run navigation commands:
 ```bash
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source ~/workspaces/go2_rl_ws/install/setup.sh &&
