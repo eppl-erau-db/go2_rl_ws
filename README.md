@@ -131,7 +131,7 @@ cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_deploy go2_rl_control
 ```
 
-### Terminal Commands (Rough Policy)
+### Terminal Commands (Rough Policy) --> NOT FUNCTIONAL
 
 Open a terminal, source unitree_ros and go2_rl_ws, and launch:
 ```bash
