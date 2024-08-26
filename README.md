@@ -158,7 +158,7 @@ Open a terminal, source unitree_ros and go2_rl_ws, and create a pose command:
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source ~/workspaces/go2_rl_ws/install/setup.sh &&
 cd ~/workspaces/go2_rl_ws &&
-ros2 run rl_navigation go2_pose_command 
+ros2 run rl_navigation go2_pose_command --ros-args -p x_cmd:=0.1 -p y_cmd:=0.00 -p heading_cmd:=0.00
 ```
 
 Open a new terminal, source unitree_ros and go2_rl_ws, and run the projected gravity publisher:

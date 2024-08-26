@@ -37,8 +37,8 @@ public:
         buttons_subscription_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
             "buttons", 10, std::bind(&Go2_RL_Control::buttons_callback, this, std::placeholders::_1));
 
-        // Publisher Timer (20ms)
-        timer_ = this->create_wall_timer(std::chrono::milliseconds(20), std::bind(&Go2_RL_Control::publish_lowcmd, this));
+        // Publisher Timer (5ms) --> Increasing frequency from 50Hz to 200Hz
+        timer_ = this->create_wall_timer(std::chrono::milliseconds(5), std::bind(&Go2_RL_Control::publish_lowcmd, this));
 
         // Initialize LowCmd message and Log
         init_cmd();

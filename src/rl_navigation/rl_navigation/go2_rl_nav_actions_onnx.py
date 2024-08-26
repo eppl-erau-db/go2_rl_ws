@@ -7,7 +7,7 @@ import numpy as np
 import onnxruntime as ort
 import os
 from ament_index_python.packages import get_package_share_directory
-
+from scipy.spatial.transform import Rotation as R
 
 class Go2_RL_Nav_Actions(Node):
     def __init__(self):
@@ -39,10 +39,10 @@ class Go2_RL_Nav_Actions(Node):
         self.processed_actions = None
         self.base_vel = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         self.projected_gravity = np.array([0.0, 0.0, 0.0], dtype=np.float32)
-        self.cmd_pose = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
+        self.current_cmd_pose = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
         self.current_pose = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
 
-        # Defaults and scale from isaac lab:
+        # 
         self.pose_cmd_defaults = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
         # Finding and loading the ONNX model - can be changed to desired model
@@ -61,27 +61,41 @@ class Go2_RL_Nav_Actions(Node):
         self.ort_session = ort.InferenceSession(model_path)
 
     def state_callback(self, msg):
-        self.base_vel = np.array([msg.velocity], dtype=np.float32)
+        # If first run, set the initial pose to be the current position reading with heading zero
+        if not hasattr(self, 'initial_xyz') or not hasattr(self, 'initial_heading'):
+            self.initial_xyz = np.array(msg.position, dtype=np.float32)
+            self.initial_heading = np.array([msg.imu_state.rpy[2]], dtype=np.float32)
+            self.initial_pose = np.concatenate((self.initial_xyz, self.initial_heading))
+        
+        # Get current pose
         self.current_xyz = np.array(msg.position, dtype=np.float32)
-        self.current_heading = np.array([0.0], dtype = np.float32)
-        self.current_pose = np.concatenate((self.current_xyz, self.current_heading), axis=None)
+        self.current_heading = np.array([msg.imu_state.rpy[2]], dtype=np.float32)
+        self.current_pose = np.concatenate((self.current_xyz, self.current_heading)) - self.initial_pose
+
+        # Base velocity observation
+        self.base_vel = np.array(msg.velocity, dtype=np.float32)
 
     def projected_gravity_callback(self, msg):
-        self.projected_gravity = msg.data
+        self.projected_gravity = np.array(msg.data, dtype=np.float32)
 
     def cmd_pose_callback(self, msg):
-        self.cmd_pose = msg.data
+        # Calling current pose to update the pose command as approaching the goal
+        if not hasattr(self, "initial_cmd_pose"):
+            self.initial_cmd_pose = np.array(msg.data, dtype=np.float32) - self.initial_pose
+
+        # Updating command pose based on progress made
+        self.current_cmd_pose = self.initial_cmd_pose - self.current_pose
 
     def generate_actions(self):
         # Log the current state of the input components
-        self.get_logger().info(f"Base velocity: {self.base_vel}")
-        self.get_logger().info(f"Projected gravity: {self.projected_gravity}")
-        self.get_logger().info(f"Cmd pose: {self.cmd_pose}")
+        self.get_logger().info(f"Base Velocity: {self.base_vel}")
+        self.get_logger().info(f"Projected Gravity: {self.projected_gravity}")
+        self.get_logger().info(f"Current Cmd pose: {self.current_cmd_pose}")
 
         # Creating obs vector (without last action)
         obs = np.concatenate((self.base_vel,
                               self.projected_gravity,
-                              self.cmd_pose - self.current_pose), axis=None)
+                              self.current_cmd_pose), axis=None)
 
         # Log the obs vector and its size
         self.get_logger().info(f"Obs vector: {np.array2string(obs, precision=3, separator=', ')}")

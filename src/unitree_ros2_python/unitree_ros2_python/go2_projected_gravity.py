@@ -28,7 +28,7 @@ class ProjectedGravityNode(Node):
             msg.imu_state.quaternion[1],
             msg.imu_state.quaternion[2],
             msg.imu_state.quaternion[3]
-        ])
+        ]) # Format: (0-w, 1-x, 2-y, 3-z)
 
         # Calculate projected gravity vector
         gravity_proj = self.projected_gravity_vector(imu_quaternion)
