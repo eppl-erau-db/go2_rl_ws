@@ -27,7 +27,7 @@ Before setup, ensure you have installed [ROS2 Humble](https://docs.ros.org/en/hu
 To start, clone this repository into your ROS2 workspaces directory:
 ```bash
 cd ~/workspaces
-git clone --recurse-submodules https://github.com/gabearod2/go2_rl_ws
+git clone --recurse-submodules https://github.com/eppl-erau-db/go2_rl_ws
 ```
 
 Resolving dependencies:
