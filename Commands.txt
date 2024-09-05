@@ -1,17 +1,7 @@
-## The following commands I needed to run the current version of the repo:
-
-1. First they clone the repository and resolve some dependencies and stuff using the README commands. Next, they have to do the following:
-
-- Note: This is assuming they have cloned my repository folder into their workspaces folder in their home directory
-
-cd ~/workspaces/go2_rl_ws/unitree_sdk2 &&
-mkdir build &&
-cd build &&
-cmake .. &&
-make &&
-cd .. &&
-cd ~/workspaces/go2_rl_ws &&
+-- BUILD COMMANDS --
 source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source ~/workspaces/go2_rl_ws/install/setup.sh &&
+cd ~/workspaces/go2_rl_ws &&
 colcon build --packages-select unitree_api &&
 colcon build --packages-select unitree_go &&
 colcon build --packages-select unitree_ros2_python --symlink-install &&
@@ -22,3 +12,62 @@ colcon build --packages-select rl_deploy &&
 colcon build --packages-select rl_deploy_nav &&
 colcon build --packages-select go2_launch
 
+-- RUN NODES COMMANDS --
+ros2 run unitree_ros2_python go2_base_ang_vel
+ros2 run unitree_ros2_python go2_binary_foot_contacts
+ros2 run unitree_ros2_python go2_controller_commands
+ros2 run unitree_ros2_python go2_joint_pos_vel
+ros2 run unitree_ros2_python go2_motion_switcher
+ros2 run unitree_ros2_python go2_projected_gravity
+ros2 run unitree_ros2_python go2_rl_actions_jit
+ros2 run unitree_ros2_python go2_rl_actions_onnx
+ros2 run unitree_ros2_python go2_rl_rough_actions_onnx
+ros2 run rl_navigation go2_rl_nav_actions_jit
+ros2 run rl_navigation go2_rl_nav_actions_onnx
+ros2 run rl_navigation go2_pose_command --ros-args -p x_cmd:=0.1 -p y_cmd:=0.00 -p heading_cmd:=0.00
+ros2 run rl_deploy_nav go2_rl_nav
+ros2 run rl_deploy go2_rl_control
+ros2 run go2_sdk_integration go2_ai_switcher
+ros2 run go2_sdk_integration go2_sport_switcher
+ros2 run go2_sdk_integration go2_motion_switcher_service
+ros2 run go2_sdk_integration go2_motion_shut_off
+ros2 run go2_sdk_integration go2_audio_shut_off
+ros2 run go2_lidar_decoder go2_height_map
+ros2 run go2_lidar_decoder go2_height_map_visualizer
+ros2 run go2_lidar_decoder go2_depth_map
+ros2 run go2_lidar_decoder go2_depth_map_visualizer
+
+-- LAUNCH COMMANDS --
+ros2 launch go2_launch go2_nav_nodes_jit.launch.py
+ros2 launch go2_launch go2_nav_nodes_onnx.launch.py
+ros2 launch go2_launch go2_rough_walk_nodes_onnx.launch.py
+ros2 launch go2_launch go2_walk_nodes_jit.launch.py
+ros2 launch go2_launch go2_walk_nodes_onnx.launch.py
+
+###### PRONKING GAIT COMMANDS #######
+
+-- TERMINAL 1 --
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source ~/workspaces/go2_rl_ws/install/setup.sh &&
+cd ~/workspaces/go2_rl_ws &&
+ros2 launch go2_launch go2_walk_nodes_onnx.launch.py
+
+-- TERMINAL 2 --
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source ~/workspaces/go2_rl_ws/install/setup.sh &&
+cd ~/workspaces/go2_rl_ws &&
+ros2 run rl_deploy go2_rl_control
+
+###### ROUGH WALKING GAIT COMMANDS #######
+
+-- TERMINAL 1 --
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source ~/workspaces/go2_rl_ws/install/setup.sh &&
+cd ~/workspaces/go2_rl_ws &&
+ros2 launch go2_launch go2_rough_walk_nodes_onnx.launch.py
+
+-- TERMINAL 2 --
+source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
+source ~/workspaces/go2_rl_ws/install/setup.sh &&
+cd ~/workspaces/go2_rl_ws &&
+ros2 run rl_deploy go2_rl_control

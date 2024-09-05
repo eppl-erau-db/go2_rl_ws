@@ -45,10 +45,10 @@ class Go2_RL_Actions(Node):
         self.init_raw_action = None
         self.raw_actions = None
         self.processed_actions = None
-        self.base_ang_vel = np.zeros(3)  # Example size, adjust as needed
-        self.projected_gravity = np.zeros(3)  # Example size, adjust as needed
+        self.base_ang_vel = np.zeros(3)
+        self.projected_gravity = np.zeros(3)  
         self.cmd_vel = [0.0, 0.0, 0.0]
-        self.joint_pos_vel = np.zeros(24)  # Example size, adjust as needed
+        self.joint_pos_vel = np.zeros(24)
         self.joint_pos_init = None
 
         # Defaults and scale from isaac lab:
