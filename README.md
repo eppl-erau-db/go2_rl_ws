@@ -132,6 +132,7 @@ ros2 run rl_deploy go2_rl_control
 ```
 
 ### Terminal Commands (Rough Policy) --> NOT FUNCTIONAL
+NOTE: New policies need to be trained to replicate real world binary contact returns.
 
 Open a terminal, source unitree_ros and go2_rl_ws, and launch:
 ```bash
