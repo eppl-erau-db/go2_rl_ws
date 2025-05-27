@@ -2,27 +2,21 @@
 
 ## Introduction and Scope
 
-This repository contains a ROS2 Humble workspace allowing for the real world implementation of a trained RL policy on the Go2. Currently, there is support for locomotion policies and 2D navigation policies (without obstacle avoidance). To train the RL policies, [Isaac Lab](https://github.com/isaac-sim/IsaacLab) was used.
+This repository contains a ROS2 Humble workspace allowing for the real world implementation of a trained RL policy on the Go2. Currently, there is support for blind locomotion policies. To train the RL policies, [Isaac Lab](https://github.com/isaac-sim/IsaacLab) was used.
 
 ### Policy Information
 
-Locomotion models can be found in the share directory of the unitree_ros2_python package. Navigation models can be found in the share directory of the rl_navigation package. They are in the ONNX format for maximum compatibility.
+Locomotion models can be found in the share directory of the blind_locomotion package. They are in the ONNX format for maximum compatibility.
 
-Note that the observations tensor has been edited to not include the height scan or the base linear velocities as these are not easily attainable in low state, which the robot has to be in to deliver low level commands. Development is currently underway in LiDAR decoding for height map information and sensor fusion for linear velocity information, as well as support for 3D navigation. 
-
-### FlowCharts
+### FlowChart
 
 Here is the current configuration of the locomotion policies:
 
 ![RL Control FlowChart](https://github.com/gabearod2/go2_rl_ws/blob/main/images/RL%20CONTROL.jpeg)
 
-Here is the current configuration of the navigation policies:
-
-![RL Navigation FlowChart](https://github.com/gabearod2/go2_rl_ws/blob/main/images/RL%20NAVIGATION.jpeg)
-
 ## Setup
 
-Before setup, ensure you have installed [ROS2 Humble](https://docs.ros.org/en/humble/Installation.html) and are familiar to connecting your system to the Go2, through ethernet, referring to [Unitree's documentation](https://support.unitree.com/home/en/developer/Quick_start.).
+Before setup, ensure you have installed [ROS2 Humble](https://docs.ros.org/en/humble/Installation.html) and are familiar to connecting your system to the Go2, through Ethernet, referring to [Unitree's documentation](https://support.unitree.com/home/en/developer/Quick_start.).
 
 To start, clone this repository into your ROS2 workspaces directory:
 ```bash
@@ -30,7 +24,7 @@ cd ~/workspaces
 git clone --recurse-submodules https://github.com/eppl-erau-db/go2_rl_ws
 ```
 
-Resolving dependencies:
+Resolve the required dependencies (you can make a conda or venv env if you'd like):
 ```bash
 pip install onnxruntime-gpu # or onnxruntime-cpu
 sudo apt install ros-humble-rmw-cyclonedds-cpp
@@ -46,7 +40,7 @@ cd ..
 colcon build --packages-select cyclonedds
 ```
 
-Source ros and build unitree ROS2:
+Source ROS2 and build unitree ROS2:
 ```bash
 source /opt/ros/humble/setup.bash
 colcon build
@@ -130,62 +124,6 @@ source ~/workspaces/go2_rl_ws/install/setup.sh &&
 cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_deploy go2_rl_control
 ```
-
-### Terminal Commands (Rough Policy) --> NOT FUNCTIONAL
-NOTE: New policies need to be trained to replicate real world binary contact returns.
-
-Open a terminal, source unitree_ros and go2_rl_ws, and launch:
-```bash
-source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
-source ~/workspaces/go2_rl_ws/install/setup.sh &&
-cd ~/workspaces/go2_rl_ws &&
-ros2 launch go2_launch go2_rough_walk_nodes_onnx.launch.py
-```
-
-Open a new terminal, and run the low command message publisher:
-```bash
-source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
-source ~/workspaces/go2_rl_ws/install/setup.sh &&
-cd ~/workspaces/go2_rl_ws &&
-ros2 run rl_deploy go2_rl_control
-```
-
-## Navigation Deployment
-
-To deploy, ensure the quadraped is standing in Sport Mode or AI Mode. The pose commands should be sent in the world frame. Ensure that the z command is around 0.35 [m].
-
-Open a terminal, source unitree_ros and go2_rl_ws, and create a pose command:
-```bash
-source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
-source ~/workspaces/go2_rl_ws/install/setup.sh &&
-cd ~/workspaces/go2_rl_ws &&
-ros2 run rl_navigation go2_pose_command --ros-args -p x_cmd:=0.1 -p y_cmd:=0.00 -p heading_cmd:=0.00
-```
-
-Open a new terminal, source unitree_ros and go2_rl_ws, and run the projected gravity publisher:
-```bash
-source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
-source ~/workspaces/go2_rl_ws/install/setup.sh &&
-cd ~/workspaces/go2_rl_ws &&
-ros2 run unitree_ros2_python go2_projected_gravity
-```
-
-Open a new terminal, source unitree_ros and go2_rl_ws, and run navigation action inference:
-```bash
-source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
-source ~/workspaces/go2_rl_ws/install/setup.sh &&
-cd ~/workspaces/go2_rl_ws &&
-ros2 run rl_navigation go2_rl_nav_actions_onnx
-```
-
-Open a new terminal, source unitree_ros and go2_rl_ws, and run navigation commands:
-```bash
-source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
-source ~/workspaces/go2_rl_ws/install/setup.sh &&
-cd ~/workspaces/go2_rl_ws &&
-ros2 run rl_deploy_nav go2_rl_nav
-```
-
 ## Video of Preliminary Results
 
 The following is a sneak peek into the longer [video](https://youtu.be/o3_ABcsxeG8) of the pronking gait that has currently been achieved:
@@ -200,6 +138,6 @@ This is an experimental code, we are not responsible for any damages! Use at you
 
 ## Training
 
-To find the training environment I used through Isaac Lab, follow my forked [Isaac Lab repo](https://github.com/gabearod2/IsaacLab/tree/rl_deployment). To edit which RL policy you use, edit go2_rl_actions.py to use a different ONNX model, ensuring it takes the same input as the current models.  
+To find the training environment I used through Isaac Lab, follow my forked [Isaac Lab repo](https://github.com/gabearod2/IsaacLab/). To edit which RL policy you use, edit go2_rl_actions.py to use a different ONNX model, ensuring it takes the same input as the current models.  
 
 Future work is to train the quadruped in similar fashion to the following, [Extreme Parkour](https://github.com/chengxuxin/extreme-parkour.git) for the best results.

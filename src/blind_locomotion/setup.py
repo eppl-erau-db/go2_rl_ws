@@ -25,7 +25,6 @@ setup(
     entry_points={
         'console_scripts': [
             'rl_actions = blind_locomotion.rl_actions:main',
-            'motion_switcher = blind_locomotion.motion_switcher:main',
             'controller_commands = blind_locomotion.controller_commands:main'
         ],
     },
