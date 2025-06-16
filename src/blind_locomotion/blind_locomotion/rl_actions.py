@@ -207,10 +207,22 @@ class RLActionsNode(Node):
         self.publisher.publish(action_msg)
 
     def projected_gravity_vector(self, imu_quaternion):
+        '''
+        CHECK FOR CONVENTION ERROR
+        
+        TODO: READ DOCS TO UNDERSTAND THE RESULTING ROTATION.
+        '''
+
         # Use rotation from quaternion to find proj g
         rotation = R.from_quat(imu_quaternion)
         gravity_vec_w = np.array([0.0, 0.0, -1.0])  # Gravity vector in world
         gravity_proj = -1 * rotation.apply(gravity_vec_w)
+        return gravity_proj
+    
+        # Could also be this?
+        rotation = R.from_quat(imu_quaternion)
+        gravity_vec_w = np.array([0.0, 0.0, -1.0])  # Gravity vector in world frame
+        gravity_proj = rotation.inv().apply(gravity_vec_w)  # Convert to body frame
         return gravity_proj
     
     def load_onnx_model(self, model_path):
