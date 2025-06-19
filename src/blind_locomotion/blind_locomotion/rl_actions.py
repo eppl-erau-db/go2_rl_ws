@@ -3,9 +3,8 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
 from geometry_msgs.msg import Twist
-from unitree_go.msg import LowState, IMUState
+from unitree_go.msg import LowState
 from ament_index_python.packages import get_package_share_directory
-from scipy.spatial.transform import Rotation as R
 import numpy as np
 import os
 import onnxruntime as ort
@@ -78,7 +77,7 @@ class RLActionsNode(Node):
         self.quat = np.array(msg.imu_state.quaternion[0:4])
 
         # Calculate projected gravity vector
-        self.gravity_proj = self.projected_gravity_vector(self.quat)
+        self.gravity_proj = self.body_projected_gravity(quat_wxyz=self.quat)
 
         # Map projected gravity vector to obs
         self.obs[3:6] = self.gravity_proj
@@ -101,7 +100,8 @@ class RLActionsNode(Node):
         ]
 
         # Subtracting defaults
-        self.motor_qs = self.motor_qs - self.motor_qs_def
+        for i in range(len(self.motor_qs)):
+            self.motor_qs[i] = self.motor_qs[i] - self.motor_qs_def[i]
 
         # Map joint positions vector to obs
         self.obs[9:21] = self.motor_qs
@@ -147,11 +147,11 @@ class RLActionsNode(Node):
             self.obs[33:45] = self.init_raw_action
 
         # Make obs into np array & reshape for the batch size
-        self.obs = self.obs.astype(np.float32).reshape(1, -1)
+        input_obs = self.obs.astype(np.float32).reshape(1, -1)
 
         # Run inference
         try:
-            ort_inputs = {self.ort_session.get_inputs()[0].name: self.obs}
+            ort_inputs = {self.ort_session.get_inputs()[0].name: input_obs}
             ort_outs = self.ort_session.run(None, ort_inputs)
             self.raw_actions = ort_outs[0].flatten()
         except Exception as e:
@@ -206,24 +206,14 @@ class RLActionsNode(Node):
         action_msg.data = clipped_actions_ordered
         self.publisher.publish(action_msg)
 
-    def projected_gravity_vector(self, imu_quaternion):
-        '''
-        CHECK FOR CONVENTION ERROR
-        
-        TODO: READ DOCS TO UNDERSTAND THE RESULTING ROTATION.
-        '''
+    def quat_apply_inverse_np(self, quat, vec):
+        w, x, y, z = quat
+        q_vec = np.array([x, y, z])
+        t = 2 * np.cross(q_vec, vec)
+        return vec - w * t + np.cross(q_vec, t)
 
-        # Use rotation from quaternion to find proj g
-        rotation = R.from_quat(imu_quaternion)
-        gravity_vec_w = np.array([0.0, 0.0, -1.0])  # Gravity vector in world
-        gravity_proj = -1 * rotation.apply(gravity_vec_w)
-        return gravity_proj
-    
-        # Could also be this?
-        rotation = R.from_quat(imu_quaternion)
-        gravity_vec_w = np.array([0.0, 0.0, -1.0])  # Gravity vector in world frame
-        gravity_proj = rotation.inv().apply(gravity_vec_w)  # Convert to body frame
-        return gravity_proj
+    def body_projected_gravity(self, quat_wxyz, gravity_world=np.array([0.0, 0.0, -1.0])):
+        return self.quat_apply_inverse_np(quat_wxyz, gravity_world)
     
     def load_onnx_model(self, model_path):
         try:
