@@ -19,7 +19,7 @@ class DataLogger(Node):
         # Data buffers
         self.last_dq = None
         self.last_time = None
-        self.dataset = deque(maxlen=100000)  # adjustable
+        self.dataset = deque(maxlen=1000000)  # adjustable
         self.data_save_path = 'motor_dataset.npz'
 
         # Message cache
