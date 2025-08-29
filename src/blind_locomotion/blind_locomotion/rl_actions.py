@@ -9,6 +9,7 @@ import numpy as np
 import os
 import onnxruntime as ort
 
+# TODO: REMOVE LIMITS FROM COMMANDED JOINT POSITIONS
 
 class RLActionsNode(Node):
     def __init__(self):
@@ -42,8 +43,8 @@ class RLActionsNode(Node):
         self.get_logger().info(f"Model path: {model_path}")
         self.load_onnx_model(model_path)
 
-        # Create a timer to generate actions every 20 milliseconds (50 Hz)
-        self.timer_period = 0.02  # 20 milliseconds
+        # Create a timer to generate actions to set frequency
+        self.timer_period = 1.0 / 25.0  # 25 Hz
         self.timer = self.create_timer(
             self.timer_period,
             self.generate_actions)
@@ -175,35 +176,25 @@ class RLActionsNode(Node):
             self.processed_actions[10]  # 10 -> RL_calf_joint  to RL_calf  -> 11
         ]
 
-        # Motor limits
-        self.motor_limits_ordered = [
-            [-0.837, 0.837],  # Front Hip
-            [-3.490, 1.570],  # Front Thigh
-            [-2.720, 0.837],  # Front Calf
-            [-0.837, 0.837],  # Front Hip
-            [-3.490, 1.570],  # Front Thigh
-            [-2.720, 0.837],  # Front Calf
-            [-0.837, 0.837],  # Rear Hip
-            [-4.530, 1.570],  # Rear Thigh
-            [-2.720, 0.837],  # Rear Calf
-            [-0.837, 0.837],  # Rear Hip
-            [-4.530, 1.570],  # Rear Thigh
-            [-2.720, 0.837]   # Rear Calf
-        ]
-
-        # Clipping actions by a scale of the motor limits:
-        clipped_actions_ordered = [0]*12
-        for i, action in enumerate(self.processed_actions_ordered):
-            min_limit, max_limit = self.motor_limits_ordered[i]
-
-            # Applying scale factor
-            min_limit = min_limit * 0.95
-            max_limit = max_limit * 0.95
-            clipped_actions_ordered[i] = max(min(action, max_limit), min_limit)
+        # # Motor limits --> done in C++ implementation...
+        # self.motor_limits_ordered = [
+        #     [-0.837, 0.837],  # Front Hip
+        #     [-3.490, 1.570],  # Front Thigh
+        #     [-2.720, 0.837],  # Front Calf
+        #     [-0.837, 0.837],  # Front Hip
+        #     [-3.490, 1.570],  # Front Thigh
+        #     [-2.720, 0.837],  # Front Calf
+        #     [-0.837, 0.837],  # Rear Hip
+        #     [-4.530, 1.570],  # Rear Thigh
+        #     [-2.720, 0.837],  # Rear Calf
+        #     [-0.837, 0.837],  # Rear Hip
+        #     [-4.530, 1.570],  # Rear Thigh
+        #     [-2.720, 0.837]   # Rear Calf
+        # ]
 
         # Publishing action messages
         action_msg = Float32MultiArray()
-        action_msg.data = clipped_actions_ordered
+        action_msg.data = self.processed_actions_ordered
         self.publisher.publish(action_msg)
 
     def quat_apply_inverse_np(self, quat, vec):

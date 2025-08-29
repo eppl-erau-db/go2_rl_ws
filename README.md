@@ -67,7 +67,7 @@ def generate_launch_description():
     shared_params = {'network_interface': "enp114s0"}  # TODO: CHANGE TO YOUR INTERFACE NAME
 ```
 
-Then, make the setup.bash an executable and run it:
+Then, make the `setup.bash` an executable and run it:
 ```bash
 cd $WORKSPACE_DIR &&
 chmod +x setup.bash &&
@@ -76,7 +76,9 @@ source ./setup.bash
 
 Finally, restart your PC, as recommended by Unitree.
 
-## Deployment
+---
+
+## Locomotion Deployment
 
 Before deploying, ensure the quadraped is **LYING DOWN** with **SPORT MODE OFF**. You can find how to disable sport mode through servive status [here](https://support.unitree.com/home/en/developer/App_binding). Tethering the top of the quadruped is also advised. Work is underway for better and safer testing. 
 
@@ -110,6 +112,7 @@ source ~/workspaces/go2_rl_ws/install/setup.sh &&
 cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_deploy go2_rl_control
 ```
+--- 
 
 ## Comments and Disclaimer
 
