@@ -1,4 +1,7 @@
 [submodule "src/unitree_ros2"]
 	path = src/unitree_ros2
 	url = https://github.com/unitreerobotics/unitree_ros2.git
+[submodule "sdk/unitree_sdk2"]
+	path = sdk/unitree_sdk2
+	url = https://github.com/eppl-erau-db/unitree_sdk2.git
 

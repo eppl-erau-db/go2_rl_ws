@@ -11,34 +11,37 @@ class WirelessControl(Node):
     def __init__(self):
         super().__init__('wireless_control')
 
-        # publishers and messages
+        # params
+        self.declare_parameter("max_linear_speed", 1.0)
+        self.declare_parameter("max_angular_speed", 1.0)
+        self.lin_speed = self.get_parameter("max_linear_speed").get_parameter_value().double_value
+        self.ang_speed = self.get_parameter("max_angular_speed").get_parameter_value().double_value
+
+        # publishers
         self.vel_publisher = self.create_publisher(Twist, 'cmd_vel', 10)
-        self.buttons_publisher = self.create_publisher(
-            Button,
-            'buttons',
-            10)
+        self.buttons_publisher = self.create_publisher(Button, 'buttons', 10)
+
+        # subscriber
         self.subscription = self.create_subscription(
             WirelessController,
             '/wirelesscontroller',
             self.wireless_controller_callback,
             10)
 
-        self.speed = 1.0  # Max lin speed, m/s
-        self.ang_speed = -1.0  # Max ang speed, rad/s (sign convention switch)
+        # timer and check timeout
         self.last_msg_time = self.get_clock().now()
         self.timeout_duration = Duration(seconds=0.5)  # Timeout duration
+        self.timer = self.create_timer(0.1, self.check_timeout)
         self.get_logger().info(
             "Wireless controller control started. Use joystick for motion."
         )
-        # Check timeout
-        self.timer = self.create_timer(0.1, self.check_timeout)
 
     def wireless_controller_callback(self, msg):
         # publish twist message 
         self.twist = Twist()
-        self.twist.linear.x = msg.ly * self.speed
-        self.twist.linear.y = msg.lx * -self.speed
-        self.twist.angular.z = msg.rx * self.ang_speed
+        self.twist.linear.x = msg.ly * self.lin_speed
+        self.twist.linear.y = msg.lx * -self.lin_speed
+        self.twist.angular.z = msg.rx * -self.ang_speed
         self.vel_publisher.publish(self.twist)
 
         # publish button message

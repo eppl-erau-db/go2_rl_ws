@@ -13,6 +13,15 @@ Clone this workspace repo + submodules
 git clone --recurse-submodules https://github.com/eppl-erau-db/go2_rl_ws
 ```
 
+Build the sdk for the shutoff motion client.
+```bash
+cd sdk
+mkdir build
+cd build
+cmake ..
+make 
+```
+
 Set env variabnle and create venv environment
 ```bash
 cd go2_rl_ws

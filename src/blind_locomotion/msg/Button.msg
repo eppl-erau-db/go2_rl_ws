@@ -1,4 +1,3 @@
-std_msgs/Header header
 bool up
 bool down
 bool start

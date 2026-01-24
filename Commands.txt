@@ -71,3 +71,21 @@ source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh &&
 source ~/workspaces/go2_rl_ws/install/setup.sh &&
 cd ~/workspaces/go2_rl_ws &&
 ros2 run rl_deploy go2_rl_control
+
+For reference, motor limits:
+
+        # # Motor limits --> done in C++ implementation...
+        # self.motor_limits_ordered = [
+        #     [-0.837, 0.837],  # Front Hip
+        #     [-3.490, 1.570],  # Front Thigh
+        #     [-2.720, 0.837],  # Front Calf
+        #     [-0.837, 0.837],  # Front Hip
+        #     [-3.490, 1.570],  # Front Thigh
+        #     [-2.720, 0.837],  # Front Calf
+        #     [-0.837, 0.837],  # Rear Hip
+        #     [-4.530, 1.570],  # Rear Thigh
+        #     [-2.720, 0.837],  # Rear Calf
+        #     [-0.837, 0.837],  # Rear Hip
+        #     [-4.530, 1.570],  # Rear Thigh
+        #     [-2.720, 0.837]   # Rear Calf
+        # ]
