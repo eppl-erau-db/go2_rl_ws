@@ -1,9 +1,3 @@
-/**
- * @file lowcmd_builder.hpp
- * @brief 
- * @author Gabriel Rodriguez
- */
-
 #pragma once
 #include <vector>
 #include "rl_deploy/types.hpp"
@@ -20,4 +14,4 @@ unitree_go::msg::LowCmd make_cmd_for_mode(
   const std::vector<float>& actions
 );
 
-} // namespace rl_deploy
+} 

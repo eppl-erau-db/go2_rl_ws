@@ -4,7 +4,6 @@
 #include "unitree_go/msg/low_state.hpp"
 
 #include "rl_deploy/types.hpp"
-#include "rl_deploy/posture_monitor.hpp"
 #include "rl_deploy/mode_state_machine.hpp"
 #include "rl_deploy/lowcmd_builder.hpp"
 
