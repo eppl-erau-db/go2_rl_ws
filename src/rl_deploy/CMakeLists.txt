@@ -14,16 +14,13 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(unitree_go REQUIRED)         # your Unitree msgs (LowCmd/LowState)
 find_package(rosidl_runtime_cpp REQUIRED) # fixes bounded_vector.hpp includes
-# find_package(unitree_api REQUIRED)      # only if you really use it in your code
 
 # --- Core library (pure C++ logic) ---
-# Adjust paths if your files differ
 add_library(rl_deploy_core
   src/core/posture_monitor.cpp
   src/core/mode_state_machine.cpp
   src/core/lowcmd_builder.cpp
-  src/third_party_common/motor_crc.cpp            # vendor source you already had
-  # src/common/ros2_sport_client.cpp  # include only if you actually use it
+  src/third_party_common/motor_crc.cpp 
 )
 
 target_include_directories(rl_deploy_core PUBLIC
@@ -37,10 +34,10 @@ ament_target_dependencies(rl_deploy_core
   std_msgs
   unitree_go
   rosidl_runtime_cpp
-  # unitree_api
+
 )
 
-# --- Node executable (ROS plumbing only) ---
+# node executable
 add_executable(go2_controller_node
   src/nodes/go2_controller_node.cpp
 )
@@ -58,10 +55,9 @@ ament_target_dependencies(go2_controller_node
   std_msgs
   unitree_go
   rosidl_runtime_cpp
-  # unitree_api
 )
 
-# --- Install ---
+# install
 install(TARGETS rl_deploy_core go2_controller_node
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
