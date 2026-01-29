@@ -15,7 +15,7 @@ git clone --recurse-submodules https://github.com/eppl-erau-db/go2_rl_ws
 
 Build the sdk for the shutoff motion client.
 ```bash
-cd sdk
+cd sdk/unitree_sdk2/
 mkdir build
 cd build
 cmake ..
