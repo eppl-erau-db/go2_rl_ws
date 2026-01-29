@@ -46,15 +46,14 @@ Ensuring you have **NOT** sourced ROS2, compile cyclonedds
 cd $WORKSPACE_DIR/src/unitree_ros2/cyclonedds_ws/src
 git clone https://github.com/ros2/rmw_cyclonedds -b humble
 git clone https://github.com/eclipse-cyclonedds/cyclonedds -b releases/0.10.x
-cd ..
+cd $WORKSPACE_DIR/
 colcon build --packages-select cyclonedds
 ```
 
 Source ROS2 and build unitree ROS2 
 ```bash
-cd ..
 source /opt/ros/humble/setup.bash
-colcon build
+colcon build --packages-select unitree_ros2
 ```
 
 Connecting the ethernet cord to the quadruped, use `ifconfig` get the name of the connection. Edit `go2_rl_ws/src/unitree_ros2/setup.sh` file to include the correct name. Using enp114s0 as an example:
@@ -62,7 +61,7 @@ Connecting the ethernet cord to the quadruped, use `ifconfig` get the name of th
 #!/bin/bash
 echo "Setup unitree ros2 environment"
 source /opt/ros/humble/setup.bash
-source $WORKSPACE_DIR/src/unitree_ros2/cyclonedds_ws/install/setup.bash
+source $WORKSPACE_DIR/install/setup.bash
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces>
                             <NetworkInterface name="enp114s0" priority="default" multicast="default" />
