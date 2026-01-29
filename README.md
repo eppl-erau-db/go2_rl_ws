@@ -11,6 +11,8 @@ Before setup, ensure you have installed [ROS2 Humble](https://docs.ros.org/en/hu
 Clone this workspace repo + submodules
 ```bash
 git clone --recurse-submodules https://github.com/eppl-erau-db/go2_rl_ws
+git switch {BRANCH_NAME}
+git pull --recurse-submodules
 ```
 
 Build the sdk for the shutoff motion client.
