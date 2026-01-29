@@ -18,15 +18,14 @@ git pull --recurse-submodules
 Build the sdk for the shutoff motion client.
 ```bash
 cd sdk/unitree_sdk2/
-mkdir build
-cd build
+mkdir build && cd build
 cmake ..
 make 
 ```
 
 Set env variabnle and create venv environment
 ```bash
-cd go2_rl_ws
+cd ../../../
 export WORKSPACE_DIR="$PWD"
 python3 -m venv .venv
 ```
