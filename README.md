@@ -93,7 +93,7 @@ ifconfig
 # Look for the interface connected to 192.168.123.x network (e.g., enp1s0, eth0)
 ```
 
-Edit `src/unitree_ros2/setup.sh` with your interface name:
+Edit `$WORKSPACE_DIR/src/unitree_ros2/setup.sh` with your interface name:
 
 ```bash
 #!/bin/bash
@@ -132,7 +132,7 @@ Before deploying RL policies, verify basic functionality with this stand/sit tes
 In **Terminal 1**, run the sport mode shutoff utility:
 
 ```bash
-cd ~/workspaces/go2_rl_ws
+cd $WORKSPACE_DIR
 ./sdk/unitree_sdk2/build/bin/go2_shutoff_motion enp1s0
 ```
 
@@ -151,7 +151,7 @@ Press Enter when prompted and wait for the `[DONE]` message.
 In **Terminal 2**, launch the stand/sit test:
 
 ```bash
-source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh
+source $WORKSPACE_DIR/src/unitree_ros2/setup.sh
 ros2 launch go2_launch go2_real_test.launch.py
 ```
 
@@ -195,7 +195,7 @@ A new terminal window will automatically open with keyboard controls:
 View actual joint angles from the robot in real-time. Useful for tuning joint positions.
 
 ```bash
-source ~/workspaces/go2_rl_ws/src/unitree_ros2/setup.sh
+source $WORKSPACE_DIR/src/unitree_ros2/setup.sh
 ros2 run blind_locomotion lowstate_monitor.py
 ```
 
@@ -238,21 +238,19 @@ Different Go2 units may have slightly different optimal positions. Use this proc
 
 ### Process
 
-1. **Run lowstate_monitor** while the robot is in the desired position:
+1. **Run lowstate_monitor** while the robot is in the desired position (while standing or laying down):
    ```bash
    ros2 run blind_locomotion lowstate_monitor.py
    ```
 
-2. **Position the robot manually** (with sport mode disabled and robot in damping mode)
+2. **Copy the printed values** from lowstate_monitor output
 
-3. **Copy the printed values** from lowstate_monitor output
-
-4. **Update constants.hpp:**
+3. **Update constants.hpp:**
    ```bash
    # Edit: src/rl_deploy/include/rl_deploy/constants.hpp
    ```
 
-5. **Rebuild:**
+4. **Rebuild:**
    ```bash
    source /opt/ros/humble/setup.bash
    colcon build --packages-select rl_deploy
@@ -359,9 +357,9 @@ ros2 launch go2_launch go2_walk.launch.py
 **Symptom:** Robot doesn't reach expected standing height
 
 **Solution:** Use `lowstate_monitor.py` to measure actual positions and update `constants.hpp`:
-1. Manually position robot to desired stand height
+1. Sportmode state can be used to stand and lay down to get values
 2. Run lowstate_monitor and record values
-3. Update `StandPos` in `constants.hpp`
+3. Update `StandPos` or `SitPos` in `constants.hpp`
 4. Rebuild with `colcon build --packages-select rl_deploy`
 
 ---
