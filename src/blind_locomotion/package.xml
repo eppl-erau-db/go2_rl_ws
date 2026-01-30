@@ -3,22 +3,20 @@
   <name>blind_locomotion</name>
   <version>1.0.0</version>
   <description>Python package for blind RL locomotion</description>
-  <maintainer email="gabearod2@gmail.com">Gabriel_Rodriguez</maintainer>
+  <maintainer email="gabearod2@gmail.com">Gabriel Rodriguez</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
 
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
-  <depend>sensor_msgs_py</depend>
+  <depend>geometry_msgs</depend>
   <depend>unitree_go</depend>
   <depend>unitree_api</depend>
-  <depend>rosbag2_cpp</depend>
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
-
-  <build_depend>rosidl_default_generators</build_depend>
   <exec_depend>rosidl_default_runtime</exec_depend>
 
   <member_of_group>rosidl_interface_packages</member_of_group>
@@ -27,6 +25,6 @@
   <test_depend>ament_lint_common</test_depend>
 
   <export>
-    <build_type>ament_python</build_type>
+    <build_type>ament_cmake</build_type>
   </export>
 </package>

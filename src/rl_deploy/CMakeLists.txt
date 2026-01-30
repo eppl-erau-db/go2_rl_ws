@@ -14,6 +14,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(unitree_go REQUIRED)         # your Unitree msgs (LowCmd/LowState)
 find_package(rosidl_runtime_cpp REQUIRED) # fixes bounded_vector.hpp includes
+find_package(blind_locomotion REQUIRED)   # for Button message
 
 # --- Core library (pure C++ logic) ---
 add_library(rl_deploy_core
@@ -34,7 +35,7 @@ ament_target_dependencies(rl_deploy_core
   std_msgs
   unitree_go
   rosidl_runtime_cpp
-
+  blind_locomotion
 )
 
 # node executable
@@ -55,6 +56,7 @@ ament_target_dependencies(go2_controller_node
   std_msgs
   unitree_go
   rosidl_runtime_cpp
+  blind_locomotion
 )
 
 # install

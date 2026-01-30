@@ -32,7 +32,7 @@ class RLActionsNode(Node):
         # publisher
         self.publisher = self.create_publisher(
             Float32MultiArray,
-            'action',
+            'actions',
             10)
         
         # subscribers
@@ -117,6 +117,11 @@ class RLActionsNode(Node):
             self.cmd_vel = np.array([0.0, 0.0, 0.0])
 
     def generate_actions(self):
+        # Check if model is loaded
+        if self.ort_session is None:
+            self.get_logger().warn("ONNX model not loaded, skipping inference")
+            return
+            
         # build observations
         obs = np.zeros(45)  
         obs[0:3] = self.ang_speed
@@ -134,7 +139,7 @@ class RLActionsNode(Node):
             self.raw_action = ort_outs[0].flatten()
         except Exception as e:
             self.get_logger().error(f"Inference failed: {e}")
-            self.raw_action = np.zeros_like(self.init_raw_action)
+            self.raw_action = np.zeros(12)
 
         # accounting for offset and scale from isaac lab
         self.processed_actions = (self.raw_action * self.scale_factor + self.q_defaults).tolist()
@@ -169,8 +174,10 @@ class RLActionsNode(Node):
         self.get_logger().info(f"Model path: {model_path}")
         try:
             self.ort_session = ort.InferenceSession(model_path)
+            self.get_logger().info(f"Successfully loaded ONNX model: {policy_name}")
         except Exception as e:
-            self.get_logger().error(f"Failed to load ONNX model: {e}")   
+            self.get_logger().fatal(f"Failed to load ONNX model: {e}")
+            self.ort_session = None   
 
 
 def main(args=None):
