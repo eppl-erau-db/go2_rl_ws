@@ -28,10 +28,10 @@ install(DIRECTORY
 # Install Python executables
 install(PROGRAMS
   blind_locomotion/rl_actions.py
+  blind_locomotion/rl_reach_actions.py
   blind_locomotion/controller_commands.py
   blind_locomotion/test_action_publisher.py
   blind_locomotion/keyboard_buttons.py
-  blind_locomotion/fake_lowstate_publisher.py
   blind_locomotion/lowcmd_decoder.py
   blind_locomotion/lowstate_monitor.py
   DESTINATION lib/${PROJECT_NAME}

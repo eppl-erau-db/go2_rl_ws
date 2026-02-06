@@ -24,6 +24,7 @@ setup(
     entry_points={
         'console_scripts': [
             'rl_actions = blind_locomotion.rl_actions:main',
+            'rl_reach_actions = blind_locomotion.rl_reach_actions:main',
             'controller_commands = blind_locomotion.controller_commands:main',
             'test_action_publisher.py = blind_locomotion.test_action_publisher:main',
             'keyboard_buttons = blind_locomotion.keyboard_buttons:main',

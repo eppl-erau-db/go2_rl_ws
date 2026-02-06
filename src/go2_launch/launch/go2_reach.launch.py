@@ -1,3 +1,14 @@
+"""
+Launch file for RL Reaching/Standing Policy deployment.
+
+This launch file starts:
+1. go2_controller_node - Low-level motor control (200 Hz)
+2. rl_reach_actions - ONNX policy inference for reaching/standing (25 Hz)
+3. controller_commands - Wireless controller to buttons (for mode switching)
+
+Usage:
+    ros2 launch go2_launch go2_reach.launch.py policy_name:=SimplePolicy
+"""
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
@@ -8,7 +19,7 @@ def generate_launch_description():
     # Declare launch arguments
     policy_name_arg = DeclareLaunchArgument(
         'policy_name',
-        default_value='old_policy',
+        default_value='SimplePolicy',
         description='Name of the ONNX policy file (without .onnx extension)'
     )
     
@@ -24,18 +35,6 @@ def generate_launch_description():
         description='Action scaling factor from Isaac Lab'
     )
     
-    max_linear_speed_arg = DeclareLaunchArgument(
-        'max_linear_speed',
-        default_value='1.0',
-        description='Maximum linear velocity (m/s)'
-    )
-    
-    max_angular_speed_arg = DeclareLaunchArgument(
-        'max_angular_speed',
-        default_value='1.0',
-        description='Maximum angular velocity (rad/s)'
-    )
-    
     enable_joint_limit_monitor_arg = DeclareLaunchArgument(
         'enable_joint_limit_monitor',
         default_value='true',
@@ -47,27 +46,21 @@ def generate_launch_description():
         policy_name_arg,
         policy_frequency_arg,
         scale_factor_arg,
-        max_linear_speed_arg,
-        max_angular_speed_arg,
         enable_joint_limit_monitor_arg,
         
-        # Wireless controller handler - converts joystick to cmd_vel and buttons
+        # Wireless controller handler - converts joystick to buttons for mode switching
         Node(
             package='blind_locomotion',
             executable='controller_commands.py',
             name='controller_commands',
-            parameters=[{
-                'max_linear_speed': LaunchConfiguration('max_linear_speed'),
-                'max_angular_speed': LaunchConfiguration('max_angular_speed'),
-            }],
             output='screen'
         ),
         
-        # RL policy inference node - runs ONNX model and publishes actions
+        # RL reaching policy inference node - runs ONNX model and publishes actions
         Node(
             package='blind_locomotion',
-            executable='rl_actions.py',
-            name='rl_actions',
+            executable='rl_reach_actions.py',
+            name='rl_reach_actions',
             parameters=[{
                 'policy_name': LaunchConfiguration('policy_name'),
                 'policy_frequency': LaunchConfiguration('policy_frequency'),

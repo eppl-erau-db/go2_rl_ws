@@ -7,44 +7,8 @@
 #include "rl_deploy/lowcmd_builder.hpp"
 #include "rl_deploy/constants.hpp"
 #include "motor_crc.h"
-#include <algorithm>
-#include <cmath>
 
 namespace rl_deploy {
-
-// Joint position limits for Go2 (radians)
-// These are conservative software limits to prevent damage
-namespace limits {
-  // Hip (abduction/adduction) limits
-  constexpr double hip_min = -0.8;
-  constexpr double hip_max = 0.8;
-  
-  // Thigh (flexion/extension) limits
-  constexpr double thigh_min = -0.5;
-  constexpr double thigh_max = 2.5;
-  
-  // Calf (knee) limits
-  constexpr double calf_min = -2.7;
-  constexpr double calf_max = -0.5;
-}
-
-// Clamp joint position to safe limits
-static double clamp_joint(size_t joint_idx, double value) {
-  // Joint indices: FR(0,1,2), FL(3,4,5), RR(6,7,8), RL(9,10,11)
-  // Pattern: hip, thigh, calf for each leg
-  size_t joint_type = joint_idx % 3;
-  
-  switch (joint_type) {
-    case 0: // Hip
-      return std::clamp(value, limits::hip_min, limits::hip_max);
-    case 1: // Thigh
-      return std::clamp(value, limits::thigh_min, limits::thigh_max);
-    case 2: // Calf
-      return std::clamp(value, limits::calf_min, limits::calf_max);
-    default:
-      return value;
-  }
-}
 
 // Initialize a LowCmd message with safe defaults
 static unitree_go::msg::LowCmd init_cmd() {
@@ -109,6 +73,23 @@ static unitree_go::msg::LowCmd make_sit_cmd(const unitree_go::msg::LowState& sta
   return cmd;
 }
 
+// Build command for Emergency Sitting mode - slower, more damped descent for safety recovery
+static unitree_go::msg::LowCmd make_emergency_sit_cmd(const unitree_go::msg::LowState& state) {
+  auto cmd = init_cmd();
+  
+  for (size_t i = 0; i < 12; ++i) {
+    cmd.motor_cmd[i].mode = 0x01;  // Position control mode
+    cmd.motor_cmd[i].q = static_cast<float>(SitPos[i]);
+    cmd.motor_cmd[i].dq = 0.0f;
+    cmd.motor_cmd[i].kp = static_cast<float>(kp_emergency_sit);  // Lower stiffness = slower
+    cmd.motor_cmd[i].kd = static_cast<float>(kd_emergency_sit);  // Higher damping = smoother
+    cmd.motor_cmd[i].tau = 0.0f;
+  }
+  
+  get_crc(cmd);
+  return cmd;
+}
+
 // Build command for Walking mode - use RL policy actions
 static unitree_go::msg::LowCmd make_walk_cmd(
     const unitree_go::msg::LowState& state,
@@ -124,9 +105,6 @@ static unitree_go::msg::LowCmd make_walk_cmd(
     double target_q = (i < actions.size()) 
         ? static_cast<double>(actions[i]) 
         : state.motor_state[i].q;
-    
-    // Apply safety limits
-    target_q = clamp_joint(i, target_q);
     
     cmd.motor_cmd[i].q = static_cast<float>(target_q);
     cmd.motor_cmd[i].dq = 0.0f;
@@ -197,6 +175,9 @@ unitree_go::msg::LowCmd make_cmd_for_mode(
     
     case Mode::Sitting:
       return make_sit_cmd(latest_state);
+    
+    case Mode::EmergencySitting:
+      return make_emergency_sit_cmd(latest_state);
     
     case Mode::Walking:
       return make_walk_cmd(latest_state, actions);

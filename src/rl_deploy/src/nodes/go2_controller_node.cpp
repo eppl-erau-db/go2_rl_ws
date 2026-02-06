@@ -5,6 +5,7 @@
 #include "blind_locomotion/msg/button.hpp"
 
 #include "rl_deploy/types.hpp"
+#include "rl_deploy/constants.hpp"
 #include "rl_deploy/mode_state_machine.hpp"
 #include "rl_deploy/lowcmd_builder.hpp"
 #include "rl_deploy/posture_monitor.hpp"
@@ -16,27 +17,29 @@ namespace {
 // Convert Mode enum to string for logging
 const char* mode_to_string(rl_deploy::Mode mode) {
   switch (mode) {
-    case rl_deploy::Mode::Idle:     return "IDLE";
-    case rl_deploy::Mode::Standing: return "STANDING";
-    case rl_deploy::Mode::Sitting:  return "SITTING";
-    case rl_deploy::Mode::Walking:  return "WALKING";
-    case rl_deploy::Mode::Damping:  return "DAMPING";
-    case rl_deploy::Mode::Killed:   return "KILLED";
-    default:                        return "UNKNOWN";
+    case rl_deploy::Mode::Idle:             return "IDLE";
+    case rl_deploy::Mode::Standing:         return "STANDING";
+    case rl_deploy::Mode::Sitting:          return "SITTING";
+    case rl_deploy::Mode::EmergencySitting: return "EMERGENCY_SITTING";
+    case rl_deploy::Mode::Walking:          return "WALKING";
+    case rl_deploy::Mode::Damping:          return "DAMPING";
+    case rl_deploy::Mode::Killed:           return "KILLED";
+    default:                                return "UNKNOWN";
   }
 }
 
 // Convert Button message to ButtonState struct
-// Button fields: up, down, start, select, a, b
-// ButtonState: stand, sit, start, stop_walking, soft_abort, kill
+// Button fields: up, down, start, select, a, b, emergency_sit
+// ButtonState: stand, sit, emergency_sit, start, stop_walking, soft_abort, kill
 rl_deploy::ButtonState buttons_from_msg(const blind_locomotion::msg::Button& m){
   rl_deploy::ButtonState b{};
-  b.stand        = m.up;        // up button -> stand
-  b.sit          = m.down;      // down button -> sit
-  b.start        = m.start;     // start button -> start walking
-  b.stop_walking = m.select;    // select button -> stop walking
-  b.soft_abort   = m.a;         // A button -> soft abort (damping)
-  b.kill         = m.b;         // B button -> kill (emergency stop)
+  b.stand         = m.up;            // up button -> stand
+  b.sit           = m.down;          // down button -> sit
+  b.emergency_sit = m.emergency_sit; // emergency sit button
+  b.start         = m.start;         // start button -> start walking
+  b.stop_walking  = m.select;        // select button -> stop walking
+  b.soft_abort    = m.a;             // A button -> soft abort (damping)
+  b.kill          = m.b;             // B button -> kill (emergency stop)
   return b;
 }
 }
@@ -47,9 +50,13 @@ public:
     // Declare parameters
     this->declare_parameter<bool>("verbose", true);
     this->declare_parameter<double>("verbose_rate", 2.0);  // Hz for verbose output
+    this->declare_parameter<bool>("enable_joint_limit_monitor", true);
     
     verbose_ = this->get_parameter("verbose").as_bool();
     verbose_interval_ = 1.0 / this->get_parameter("verbose_rate").as_double();
+    
+    // Build safety config from parameters
+    safety_.enable_joint_limit_monitor = this->get_parameter("enable_joint_limit_monitor").as_bool();
     
     // Publishers
     pub_ = create_publisher<unitree_go::msg::LowCmd>("/lowcmd", 10);
@@ -75,6 +82,8 @@ public:
             RCLCPP_INFO(get_logger(), "Button: STAND (up) pressed");
           if (buttons_.sit && !old_buttons.sit) 
             RCLCPP_INFO(get_logger(), "Button: SIT (down) pressed");
+          if (buttons_.emergency_sit && !old_buttons.emergency_sit) 
+            RCLCPP_INFO(get_logger(), "Button: EMERGENCY SIT (e) pressed");
           if (buttons_.start && !old_buttons.start) 
             RCLCPP_INFO(get_logger(), "Button: START pressed");
           if (buttons_.stop_walking && !old_buttons.stop_walking) 
@@ -105,6 +114,8 @@ public:
     RCLCPP_INFO(get_logger(), "Verbose logging: %s (rate: %.1f Hz)", 
                 verbose_ ? "ENABLED" : "DISABLED",
                 1.0 / verbose_interval_);
+    RCLCPP_INFO(get_logger(), "Safety config: joint_limit_monitor=%s",
+                safety_.enable_joint_limit_monitor ? "ON" : "OFF");
     RCLCPP_INFO(get_logger(), "Waiting for /lowstate...");
   }
 
@@ -124,6 +135,23 @@ private:
       auto cmd = rl_deploy::make_cmd_for_mode(mode_, lowstate_, {});
       pub_->publish(cmd);
       return;
+    }
+
+    // Joint limit safety check (during Walking mode or while recovering from violation)
+    if (safety_.enable_joint_limit_monitor) {
+      if (mode_ == rl_deploy::Mode::Walking || joint_limit_triggered_) {
+        if (check_joint_limits()) {
+          if (!joint_limit_triggered_) {
+            RCLCPP_ERROR(get_logger(), 
+              "Joint limit violation! Transitioning to EMERGENCY_SITTING.");
+            joint_limit_triggered_ = true;
+          }
+          mode_ = rl_deploy::Mode::EmergencySitting;
+          auto cmd = rl_deploy::make_cmd_for_mode(mode_, lowstate_, {});
+          pub_->publish(cmd);
+          return;
+        }
+      }
     }
 
     // Derive status from lowstate
@@ -147,8 +175,9 @@ private:
     if (mode_ == rl_deploy::Mode::Walking) {
       if (actions_.size() != 12) {
         RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000,
-          "Invalid actions size: %zu (expected 12). Using zeros.", actions_.size());
-        safe_actions = std::vector<float>(12, 0.0f);
+          "Invalid actions size: %zu (expected 12). Using StandPos fallback.", actions_.size());
+        safe_actions = std::vector<float>(
+            std::begin(rl_deploy::StandPos), std::end(rl_deploy::StandPos));
       }
       
       // Check for stale actions (100ms timeout)
@@ -187,6 +216,47 @@ private:
     }
   }
 
+  // Check joint limits against LowState - returns true if hard violation detected
+  bool check_joint_limits() {
+    bool hard_violation = false;
+    bool all_in_soft_zone = true;
+    
+    for (size_t i = 0; i < 12; ++i) {
+      double q = lowstate_.motor_state[i].q;
+      double dq = lowstate_.motor_state[i].dq;
+      double min_limit = rl_deploy::JointMin[i];
+      double max_limit = rl_deploy::JointMax[i];
+      double soft_min = min_limit + rl_deploy::soft_margin;
+      double soft_max = max_limit - rl_deploy::soft_margin;
+      
+      // Check if inside soft zone (for auto-reset)
+      if (q < soft_min || q > soft_max) {
+        all_in_soft_zone = false;
+      }
+      
+      // Hard limit check
+      if (q < min_limit || q > max_limit) {
+        RCLCPP_ERROR(get_logger(), 
+          "HARD LIMIT: Joint %zu = %.3f (limits: [%.3f, %.3f])",
+          i, q, min_limit, max_limit);
+        hard_violation = true;
+      }
+      // Soft limit warning (only if moving toward limit)
+      else if ((q < soft_min && dq < 0) || (q > soft_max && dq > 0)) {
+        RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 500,
+          "Soft limit: Joint %zu = %.3f, dq = %.2f", i, q, dq);
+      }
+    }
+    
+    // Reset only after emergency sit has completed (mode reached Idle)
+    if (joint_limit_triggered_ && all_in_soft_zone && mode_ == rl_deploy::Mode::Idle) {
+      RCLCPP_INFO(get_logger(), "All joints in safe zone - limit guard reset");
+      joint_limit_triggered_ = false;
+    }
+    
+    return hard_violation;
+  }
+
   // Publishers & Subscribers
   rclcpp::Publisher<unitree_go::msg::LowCmd>::SharedPtr pub_;
   rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr sub_actions_;
@@ -199,6 +269,7 @@ private:
   unitree_go::msg::LowState lowstate_;
   rl_deploy::ButtonState buttons_;
   rl_deploy::StatusFlags status_;
+  rl_deploy::SafetyConfig safety_;
   rl_deploy::Mode mode_{rl_deploy::Mode::Idle};
   rl_deploy::ModeStateMachine fsm_;
   
@@ -206,6 +277,7 @@ private:
   rclcpp::Time last_lowstate_time_;
   rclcpp::Time last_actions_time_;
   bool lowstate_received_{false};
+  bool joint_limit_triggered_{false};  // True when joint limit violation detected
   
   // Verbose logging
   bool verbose_{true};

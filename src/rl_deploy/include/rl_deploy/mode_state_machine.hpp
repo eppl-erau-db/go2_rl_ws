@@ -1,6 +1,6 @@
 /**
  * @file mode_state_machine.hpp
- * @brief 
+ * @brief Stateful FSM for robot mode control with latching behavior
  * @author Gabriel Rodriguez
  */
 
@@ -13,7 +13,7 @@ class ModeStateMachine {
     public:
         Mode update(const ButtonState& buttons, const StatusFlags& status);
     private:
-        Mode last_{Mode::Idle}; // optional book-keeping
+        Mode current_mode_{Mode::Idle};  // Current latched mode
 };
 
 } // namespace rl_deploy

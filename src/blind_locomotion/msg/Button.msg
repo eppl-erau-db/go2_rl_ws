@@ -4,3 +4,4 @@ bool start
 bool select
 bool a 
 bool b
+bool emergency_sit

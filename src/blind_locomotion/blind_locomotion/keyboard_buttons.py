@@ -31,6 +31,7 @@ HELP_TEXT = """
 ║  Key Mappings:                                       ║
 ║    u = STAND (up button)                             ║
 ║    d = SIT (down button)                             ║
+║    e = EMERGENCY SIT (slow descent)                  ║
 ║    s = START WALKING (start button)                  ║
 ║    x = STOP WALKING (select button)                  ║
 ║    a = SOFT ABORT / DAMPING (A button)               ║
@@ -94,6 +95,9 @@ class KeyboardButtons(Node):
         elif key == 'd':
             msg.down = True
             action_name = 'SIT (down)'
+        elif key == 'e':
+            msg.emergency_sit = True
+            action_name = 'EMERGENCY SIT (slow descent)'
         elif key == 's':
             msg.start = True
             action_name = 'START WALKING'

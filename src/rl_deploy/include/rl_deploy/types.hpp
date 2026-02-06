@@ -5,14 +5,16 @@ namespace rl_deploy{
     enum class Mode { 
         Idle, 
         Standing, 
-        Sitting, 
+        Sitting,
+        EmergencySitting,  // Slower sit for safety recovery
         Walking, 
         Damping, 
         Killed
     };
     struct ButtonState {
         bool stand{false}, 
-            sit{false}, 
+            sit{false},
+            emergency_sit{false},
             start{false},
             stop_walking{false}, 
             soft_abort{false}, 
@@ -22,5 +24,10 @@ namespace rl_deploy{
         bool good_stand{false}, 
             good_sit{false}, 
             is_walking{false};
+    };
+
+    // Toggle individual safety mechanisms on/off for testing
+    struct SafetyConfig {
+        bool enable_joint_limit_monitor{true}; // Emergency sit on joint limit violation
     };
 } 
