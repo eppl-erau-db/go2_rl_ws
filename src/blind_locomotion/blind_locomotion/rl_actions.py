@@ -9,7 +9,7 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation as Rot
-from std_msgs.msg import Float32, Float32MultiArray
+from std_msgs.msg import Float32MultiArray
 from unitree_go.msg import LowState
 
 
@@ -29,14 +29,9 @@ class RLActionsNode(Node):
         self.declare_parameter('policy_name', 'locomotion_policy')
         self.declare_parameter('policy_frequency', 25)
         self.declare_parameter('scale_factor', 0.25)
-        self.declare_parameter('default_hip_q', 0.0)
-        self.declare_parameter('default_thigh_q', 0.8)
-        self.declare_parameter('default_calf_q', -1.5)
-
         # Observation configuration.
         self.declare_parameter('odom_topic', '/odom')
         self.declare_parameter('odom_timeout_sec', 0.5)
-        self.declare_parameter('base_height_timeout_sec', 0.5)
         self.declare_parameter('cmd_vel_deadband', 0.1)
         self.declare_parameter('debug_enabled', True)
         self.declare_parameter('debug_rate_hz', 5.0)
@@ -46,13 +41,9 @@ class RLActionsNode(Node):
         policy_name = str(self.get_parameter('policy_name').value)
         policy_frequency = int(self.get_parameter('policy_frequency').value)
         self.scale_factor = float(self.get_parameter('scale_factor').value)
-        default_hip_q = float(self.get_parameter('default_hip_q').value)
-        default_thigh_q = float(self.get_parameter('default_thigh_q').value)
-        default_calf_q = float(self.get_parameter('default_calf_q').value)
 
         self.odom_topic = str(self.get_parameter('odom_topic').value)
         self.odom_timeout_sec = float(self.get_parameter('odom_timeout_sec').value)
-        self.base_height_timeout_sec = float(self.get_parameter('base_height_timeout_sec').value)
         self.cmd_vel_deadband = float(self.get_parameter('cmd_vel_deadband').value)
         self.debug_enabled = as_bool(self.get_parameter('debug_enabled').value)
         self.debug_rate_hz = max(0.1, float(self.get_parameter('debug_rate_hz').value))
@@ -64,14 +55,11 @@ class RLActionsNode(Node):
         )
         self.debug_interval_sec = 1.0 / self.debug_rate_hz
 
-        self.q_defaults = np.concatenate(
-            (
-                np.ones(4, dtype=np.float32) * default_hip_q,
-                np.ones(4, dtype=np.float32) * default_thigh_q,
-                np.ones(4, dtype=np.float32) * default_calf_q,
-            ),
-            axis=0,
-        )
+        self.q_defaults = np.array([
+             0.1, -0.1,  0.1, -0.1,   # hips:   FL, FR, RL, RR
+             0.8,  0.8,  1.0,  1.0,    # thighs: FL, FR, RL, RR
+            -1.5, -1.5, -1.5, -1.5,    # calfs:  FL, FR, RL, RR
+        ], dtype=np.float32)
 
         # Dynamic state.
         self.base_lin_vel = np.zeros(3, dtype=np.float32)
@@ -83,17 +71,12 @@ class RLActionsNode(Node):
         self.raw_action = np.zeros(12, dtype=np.float32)
         self.last_actions = np.zeros(12, dtype=np.float32)
 
-        self.base_height = 0.0
-        self.base_vel_z_from_height = 0.0
-
         self.lowstate_received = False
         self.odom_received = False
-        self.base_height_received = False
         self.cmd_vel_received = False
         now = self.get_clock().now()
         self.last_lowstate_time = now
         self.last_odom_time = now
-        self.last_base_height_time = now
         self.last_cmd_vel_time = now
         self.last_debug_time = now
         self.last_nonfinite_log_time = {}
@@ -116,7 +99,6 @@ class RLActionsNode(Node):
         self.create_subscription(LowState, '/lowstate', self.lowstate_callback, 10)
         self.create_subscription(Twist, 'cmd_vel', self.cmd_vel_callback, 10)
         self.create_subscription(Odometry, self.odom_topic, self.odom_callback, 10)
-        self.create_subscription(Float32, '/base_height', self.base_height_callback, 10)
 
         self.load_onnx_model(policy_name)
 
@@ -130,12 +112,9 @@ class RLActionsNode(Node):
             f'Odom gating: topic={self.odom_topic} timeout={self.odom_timeout_sec:.2f}s'
         )
         self.get_logger().info(
-            f'Base height gating: topic=/base_height timeout={self.base_height_timeout_sec:.2f}s'
-        )
-        self.get_logger().info(
-            'Obs layout (49): [0:3] base_lin_vel, [3:6] base_ang_vel, '
-            '[6] base_height, [7:10] projected_gravity, [10:13] velocity_commands, '
-            '[13:25] joint_pos, [25:37] joint_vel, [37:49] actions'
+            'Obs layout (48): [0:3] base_lin_vel, [3:6] base_ang_vel, '
+            '[6:9] projected_gravity, [9:12] velocity_commands, '
+            '[12:24] joint_pos, [24:36] joint_vel, [36:48] actions'
         )
         self.get_logger().info(
             'Debug config: '
@@ -213,19 +192,6 @@ class RLActionsNode(Node):
             self.last_odom_child_frame_id = msg.child_frame_id
         self.odom_received = True
 
-    def base_height_callback(self, msg):
-        new_height = float(msg.data)
-        now = self.get_clock().now()
-        if self.base_height_received:
-            dt = (now - self.last_base_height_time).nanoseconds * 1e-9
-            if dt > 1e-6:
-                self.base_vel_z_from_height = (new_height - self.base_height) / dt
-        else:
-            self.get_logger().info('Received first base_height on /base_height')
-        self.base_height = new_height
-        self.last_base_height_time = now
-        self.base_height_received = True
-
     def cmd_vel_callback(self, msg):
         self.cmd_vel_received = True
         self.last_cmd_vel_time = self.get_clock().now()
@@ -292,22 +258,6 @@ class RLActionsNode(Node):
             )
             return False
 
-        if not self.base_height_received:
-            self.get_logger().warn(
-                'Waiting for /base_height before policy inference',
-                throttle_duration_sec=2.0,
-            )
-            return False
-
-        base_height_age = (now - self.last_base_height_time).nanoseconds * 1e-9
-        if base_height_age > self.base_height_timeout_sec:
-            self.get_logger().warn(
-                f'Base height stale ({base_height_age:.3f}s > {self.base_height_timeout_sec:.3f}s). '
-                'Pausing action publish.',
-                throttle_duration_sec=2.0,
-            )
-            return False
-
         return True
 
     def generate_actions(self):
@@ -319,25 +269,22 @@ class RLActionsNode(Node):
         if not self._obs_ready(now):
             return
 
-        obs = np.zeros(49, dtype=np.float32)
-        obs[0:3] = self.base_lin_vel
-        obs[2] = self.base_vel_z_from_height
-        obs[3:6] = self.ang_speed
-        obs[6] = self.base_height
-        obs[7:10] = self.proj_gravity
-        obs[10:13] = self.velocity_commands
-        obs[13:25] = self.q
-        obs[25:37] = self.dq
-        obs[37:49] = self.last_actions
+        obs = np.zeros(48, dtype=np.float32)
+        obs[0:3]   = self.base_lin_vel
+        obs[3:6]   = self.ang_speed
+        obs[6:9]   = self.proj_gravity
+        obs[9:12]  = self.velocity_commands
+        obs[12:24] = self.q
+        obs[24:36] = self.dq
+        obs[36:48] = self.last_actions
         obs_slices = {
             'base_lin_vel': obs[0:3],
             'base_ang_vel': obs[3:6],
-            'base_height': obs[6:7],
-            'projected_gravity': obs[7:10],
-            'velocity_commands': obs[10:13],
-            'joint_pos': obs[13:25],
-            'joint_vel': obs[25:37],
-            'actions': obs[37:49],
+            'projected_gravity': obs[6:9],
+            'velocity_commands': obs[9:12],
+            'joint_pos': obs[12:24],
+            'joint_vel': obs[24:36],
+            'actions': obs[36:48],
         }
         for name, values in obs_slices.items():
             self._log_nonfinite_slice(name, values, now)
@@ -386,7 +333,6 @@ class RLActionsNode(Node):
         if self._should_debug_log(now):
             lowstate_age_ms = 1000.0 * self._elapsed_sec(now, self.last_lowstate_time)
             odom_age_ms = 1000.0 * self._elapsed_sec(now, self.last_odom_time)
-            base_height_age_ms = 1000.0 * self._elapsed_sec(now, self.last_base_height_time)
             cmd_vel_age_ms = (
                 1000.0 * self._elapsed_sec(now, self.last_cmd_vel_time)
                 if self.cmd_vel_received
@@ -401,7 +347,6 @@ class RLActionsNode(Node):
 
             blv_min, blv_max, blv_norm = self._slice_stats(obs_slices['base_lin_vel'])
             bav_min, bav_max, bav_norm = self._slice_stats(obs_slices['base_ang_vel'])
-            bh_val = float(obs_slices['base_height'][0])
             grav_min, grav_max, grav_norm = self._slice_stats(obs_slices['projected_gravity'])
             cmd_min, cmd_max, cmd_norm = self._slice_stats(obs_slices['velocity_commands'])
             q_min, q_max, q_norm = self._slice_stats(obs_slices['joint_pos'])
@@ -412,11 +357,10 @@ class RLActionsNode(Node):
             self.get_logger().info(
                 '[Debug] '
                 f'freshness_ms=(lowstate={lowstate_age_ms:.1f}, odom={odom_age_ms:.1f}, '
-                f'base_height={base_height_age_ms:.1f}, cmd_vel={cmd_age_text}) '
+                f'cmd_vel={cmd_age_text}) '
                 f'obs_stats='
                 f'blv[min={blv_min:.3f},max={blv_max:.3f},norm={blv_norm:.3f}] '
                 f'bav[min={bav_min:.3f},max={bav_max:.3f},norm={bav_norm:.3f}] '
-                f'bh[val={bh_val:.3f}] '
                 f'grav[min={grav_min:.3f},max={grav_max:.3f},norm={grav_norm:.3f}] '
                 f'cmd[min={cmd_min:.3f},max={cmd_max:.3f},norm={cmd_norm:.3f}] '
                 f'q[min={q_min:.3f},max={q_max:.3f},norm={q_norm:.3f}] '
@@ -458,9 +402,9 @@ class RLActionsNode(Node):
         input_dim = self._extract_last_dim(input_shape)
         output_dim = self._extract_last_dim(output_shape)
 
-        if input_dim != 49:
+        if input_dim != 48:
             self.get_logger().fatal(
-                f'Invalid model input dim: expected 49, got {input_shape}. '
+                f'Invalid model input dim: expected 48, got {input_shape}. '
                 'Refusing to run.'
             )
             self.ort_session = None

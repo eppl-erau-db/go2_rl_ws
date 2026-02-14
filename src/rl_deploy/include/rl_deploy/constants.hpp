@@ -13,10 +13,10 @@ namespace rl_deploy {
 // Order: FR(hip,thigh,calf), FL, RR, RL
 // Values measured from actual robot via lowstate_monitor.py
 constexpr std::array<double, 12> StandPos = {
-    0.0, 0.8, -1.5,   // FR - measured: thigh≈0.79-0.81, calf≈-1.52
-    0.0, 0.8, -1.5,   // FL
-    0.0, 0.8, -1.5,   // RR
-    0.0, 0.8, -1.5,   // RL
+   -0.1, 0.8, -1.5,   // FR
+    0.1, 0.8, -1.5,   // FL
+   -0.1, 1.0, -1.5,   // RR
+    0.1, 1.0, -1.5,   // RL
 };
 
 // Exact per-leg values measured from robot laying naturally

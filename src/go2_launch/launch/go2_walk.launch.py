@@ -2,6 +2,7 @@ import math
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, LogInfo
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -10,33 +11,18 @@ def generate_launch_description():
     # Policy + observation args.
     policy_name_arg = DeclareLaunchArgument(
         'policy_name',
-        default_value='locomotion_policy_v2',
+        default_value='go2_flat_v0',
         description='Name of the ONNX policy file (without .onnx extension)',
     )
     policy_frequency_arg = DeclareLaunchArgument(
         'policy_frequency',
-        default_value='25',
+        default_value='50',
         description='RL policy inference frequency in Hz',
     )
     scale_factor_arg = DeclareLaunchArgument(
         'scale_factor',
         default_value='0.25',
         description='Action scaling factor from Isaac Lab',
-    )
-    default_hip_q_arg = DeclareLaunchArgument(
-        'default_hip_q',
-        default_value='0.0',
-        description='Default hip joint position offset',
-    )
-    default_thigh_q_arg = DeclareLaunchArgument(
-        'default_thigh_q',
-        default_value='0.8',
-        description='Default thigh joint position offset',
-    )
-    default_calf_q_arg = DeclareLaunchArgument(
-        'default_calf_q',
-        default_value='-1.5',
-        description='Default calf joint position offset',
     )
     odom_topic_arg = DeclareLaunchArgument(
         'odom_topic',
@@ -47,11 +33,6 @@ def generate_launch_description():
         'odom_timeout_sec',
         default_value='0.5',
         description='Pause policy when odom age exceeds this timeout',
-    )
-    base_height_timeout_sec_arg = DeclareLaunchArgument(
-        'base_height_timeout_sec',
-        default_value='0.5',
-        description='Pause policy when base_height age exceeds this timeout',
     )
     cmd_vel_deadband_arg = DeclareLaunchArgument(
         'cmd_vel_deadband',
@@ -98,6 +79,12 @@ def generate_launch_description():
         description='Emergency sit on joint limit violation (set false to disable)',
     )
 
+    enable_base_height_estimator_arg = DeclareLaunchArgument(
+        'enable_base_height_estimator',
+        default_value='false',
+        description='Launch base height estimator node (not needed for flat policy)',
+    )
+
     bhe_force_threshold_arg = DeclareLaunchArgument(
         'bhe_force_threshold',
         default_value='20.0',
@@ -119,12 +106,8 @@ def generate_launch_description():
             policy_name_arg,
             policy_frequency_arg,
             scale_factor_arg,
-            default_hip_q_arg,
-            default_thigh_q_arg,
-            default_calf_q_arg,
             odom_topic_arg,
             odom_timeout_sec_arg,
-            base_height_timeout_sec_arg,
             cmd_vel_deadband_arg,
             lin_vel_x_min_arg,
             lin_vel_x_max_arg,
@@ -151,6 +134,7 @@ def generate_launch_description():
             go2_debug_enabled_arg,
             go2_debug_rate_hz_arg,
             enable_joint_limit_monitor_arg,
+            enable_base_height_estimator_arg,
             bhe_force_threshold_arg,
             bhe_publish_rate_hz_arg,
             bhe_filter_alpha_arg,
@@ -208,12 +192,8 @@ def generate_launch_description():
                         'policy_name': LaunchConfiguration('policy_name'),
                         'policy_frequency': LaunchConfiguration('policy_frequency'),
                         'scale_factor': LaunchConfiguration('scale_factor'),
-                        'default_hip_q': LaunchConfiguration('default_hip_q'),
-                        'default_thigh_q': LaunchConfiguration('default_thigh_q'),
-                        'default_calf_q': LaunchConfiguration('default_calf_q'),
                         'odom_topic': LaunchConfiguration('odom_topic'),
                         'odom_timeout_sec': LaunchConfiguration('odom_timeout_sec'),
-                        'base_height_timeout_sec': LaunchConfiguration('base_height_timeout_sec'),
                         'cmd_vel_deadband': LaunchConfiguration('cmd_vel_deadband'),
                         'debug_enabled': LaunchConfiguration('policy_debug_enabled'),
                         'debug_rate_hz': LaunchConfiguration('policy_debug_rate_hz'),
@@ -228,6 +208,7 @@ def generate_launch_description():
                 output='screen',
             ),
             Node(
+                condition=IfCondition(LaunchConfiguration('enable_base_height_estimator')),
                 package='base_height_estimator',
                 executable='base_height_node',
                 name='base_height_estimator',
