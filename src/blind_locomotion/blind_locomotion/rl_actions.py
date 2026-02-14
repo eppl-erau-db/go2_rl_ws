@@ -347,9 +347,7 @@ class RLActionsNode(Node):
         try:
             ort_inputs = {self.ort_session.get_inputs()[0].name: input_obs}
             ort_outs = self.ort_session.run(None, ort_inputs)
-            self.raw_action = np.clip(
-                ort_outs[0].flatten().astype(np.float32), -1.0, 1.0
-            )
+            self.raw_action = ort_outs[0].flatten().astype(np.float32)
         except Exception as exc:
             self.get_logger().error(f'Inference failed: {exc}')
             self.raw_action = np.zeros(12, dtype=np.float32)
