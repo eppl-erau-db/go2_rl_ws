@@ -44,19 +44,19 @@ constexpr double kd_damping = 6.0;   // Higher damping for gentler descent
 constexpr double kp_emergency_sit = 10.0;
 constexpr double kd_emergency_sit = 10.0;
 
-// Joint position limits from Go2 URDF (radians)
+// Runtime joint safety bounds used by the joint-limit monitor (radians)
 // Order: FR(hip,thigh,calf), FL, RR, RL
-// These are the mechanical limits - commands will be clamped to these
+// Wide profile: relaxed for walking/emergency-sit recovery behavior.
 constexpr std::array<double, 12> JointMin = {
-    -1.047, -0.35, -2.72,   // FR: hip, thigh, calf
-    -1.047, -0.35, -2.72,   // FL
-    -1.047, -0.35, -2.72,   // RR
-    -1.047, -0.35, -2.72,   // RL
+    -1.047, -0.35, -2.90,   // FR: hip, thigh, calf
+    -1.047, -0.35, -2.90,   // FL
+    -1.047, -0.35, -2.90,   // RR
+    -1.047, -0.35, -2.90,   // RL
 };
 
 constexpr std::array<double, 12> JointMax = {
-    1.047, 1.5, -0.84,    // FR: hip, thigh (front max=1.5), calf
-    1.047, 1.5, -0.84,    // FL
+    1.047, 2.0, -0.84,    // FR: hip, thigh (front max=2.0), calf
+    1.047, 2.0, -0.84,    // FL
     1.047, 2.0, -0.84,    // RR: thigh max=2.0 (rear needs more for sitting)
     1.047, 2.0, -0.84,    // RL
 };

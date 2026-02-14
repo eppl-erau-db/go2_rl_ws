@@ -11,6 +11,7 @@ endif()
 # Dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(unitree_go REQUIRED)         # your Unitree msgs (LowCmd/LowState)
 find_package(rosidl_runtime_cpp REQUIRED) # fixes bounded_vector.hpp includes
@@ -53,6 +54,7 @@ target_link_libraries(go2_controller_node rl_deploy_core)
 
 ament_target_dependencies(go2_controller_node
   rclcpp
+  geometry_msgs
   std_msgs
   unitree_go
   rosidl_runtime_cpp
