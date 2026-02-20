@@ -1,7 +1,6 @@
 """Tests for wireless controller velocity outputs used by the locomotion policy."""
-import math
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -9,6 +8,15 @@ from blind_locomotion.controller_commands import (
     clamp,
     stick_to_range,
     STICK_FIELDS,
+    LIN_X_RANGE,
+    LIN_Y_RANGE,
+    ANG_Z_RANGE,
+    AXIS_LIN_X,
+    AXIS_LIN_Y,
+    AXIS_ANG_Z,
+    INVERT_LIN_X,
+    INVERT_LIN_Y,
+    INVERT_ANG_Z,
 )
 
 
@@ -80,35 +88,15 @@ def make_wireless_msg(lx=0.0, ly=0.0, rx=0.0, ry=0.0, keys=0):
 # Node-level velocity output tests
 # ---------------------------------------------------------------------------
 
-def _make_node(param_overrides=None):
+def _make_node(overrides=None):
     """Instantiate WirelessControl with rclpy mocked out.
 
     Returns (node, published_twists, published_buttons) where the lists
     accumulate every message published on cmd_vel / buttons.
-    """
-    defaults = {
-        'lin_vel_x_min': -1.0,
-        'lin_vel_x_max': 1.0,
-        'lin_vel_y_min': -1.0,
-        'lin_vel_y_max': 1.0,
-        'ang_vel_z_min': -1.0,
-        'ang_vel_z_max': 1.0,
-        'heading_min': -math.pi,
-        'heading_max': math.pi,
-        'axis_lin_x': 'left_y',
-        'axis_lin_y': 'left_x',
-        'axis_ang_z': 'right_x',
-        'invert_lin_x': False,
-        'invert_lin_y': True,
-        'invert_ang_z': True,
-        'timeout_sec': 0.5,
-        'debug_enabled': False,
-        'debug_rate_hz': 5.0,
-        'debug_only_nonzero_cmd': False,
-    }
-    if param_overrides:
-        defaults.update(param_overrides)
 
+    *overrides* is a dict of node attribute names to values, applied after
+    setting defaults from the module-level constants.
+    """
     from blind_locomotion.controller_commands import WirelessControl
 
     published_twists = []
@@ -121,21 +109,21 @@ def _make_node(param_overrides=None):
         node._logger = MagicMock()
         node.get_logger = MagicMock(return_value=node._logger)
 
-        # Parameter values.
-        node.lin_x_range = (defaults['lin_vel_x_min'], defaults['lin_vel_x_max'])
-        node.lin_y_range = (defaults['lin_vel_y_min'], defaults['lin_vel_y_max'])
-        node.ang_z_range = (defaults['ang_vel_z_min'], defaults['ang_vel_z_max'])
-        node.heading_range = (defaults['heading_min'], defaults['heading_max'])
-        node.axis_lin_x = defaults['axis_lin_x']
-        node.axis_lin_y = defaults['axis_lin_y']
-        node.axis_ang_z = defaults['axis_ang_z']
-        node.invert_lin_x = defaults['invert_lin_x']
-        node.invert_lin_y = defaults['invert_lin_y']
-        node.invert_ang_z = defaults['invert_ang_z']
-        node.debug_enabled = defaults['debug_enabled']
-        node.debug_rate_hz = defaults['debug_rate_hz']
-        node.debug_only_nonzero_cmd = defaults['debug_only_nonzero_cmd']
-        node.debug_interval_sec = 1.0 / defaults['debug_rate_hz']
+        # Set defaults from module constants.
+        node.lin_x_range = LIN_X_RANGE
+        node.lin_y_range = LIN_Y_RANGE
+        node.ang_z_range = ANG_Z_RANGE
+        node.axis_lin_x = AXIS_LIN_X
+        node.axis_lin_y = AXIS_LIN_Y
+        node.axis_ang_z = AXIS_ANG_Z
+        node.invert_lin_x = INVERT_LIN_X
+        node.invert_lin_y = INVERT_LIN_Y
+        node.invert_ang_z = INVERT_ANG_Z
+
+        # Apply overrides.
+        if overrides:
+            for attr, value in overrides.items():
+                setattr(node, attr, value)
 
         # Fake clock.
         fake_time = MagicMock()
@@ -146,7 +134,6 @@ def _make_node(param_overrides=None):
             return_value=MagicMock(now=MagicMock(return_value=fake_time))
         )
         node.last_msg_time = fake_time
-        node.last_debug_time = fake_time
         node.last_axis_warn_time = fake_time
         node.in_timeout = False
 
@@ -227,10 +214,7 @@ class TestCustomVelocityRanges:
 
     def test_forward_only_range(self):
         """lin_x in [0, 2] — neutral stick → 1.0, full forward → 2.0."""
-        node, twists, _ = _make_node({
-            'lin_vel_x_min': 0.0,
-            'lin_vel_x_max': 2.0,
-        })
+        node, twists, _ = _make_node({'lin_x_range': (0.0, 2.0)})
         node.wireless_controller_callback(make_wireless_msg(ly=0.0))
         assert twists[0].linear.x == pytest.approx(1.0)
 
@@ -244,10 +228,7 @@ class TestCustomVelocityRanges:
 
     def test_narrow_yaw_range(self):
         """ang_z in [-0.5, 0.5]."""
-        node, twists, _ = _make_node({
-            'ang_vel_z_min': -0.5,
-            'ang_vel_z_max': 0.5,
-        })
+        node, twists, _ = _make_node({'ang_z_range': (-0.5, 0.5)})
         # rx = -1.0, inverted → stick = 1.0 → 0.5
         node.wireless_controller_callback(make_wireless_msg(rx=-1.0))
         assert twists[0].angular.z == pytest.approx(0.5)

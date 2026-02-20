@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-import math
-
 import rclpy
 from rclpy.node import Node
 from rclpy.duration import Duration
@@ -16,6 +14,18 @@ STICK_FIELDS = {
     'right_y': 'ry',
 }
 
+# Fixed hardware/training constants.
+LIN_X_RANGE = (-1.0, 1.0)
+LIN_Y_RANGE = (-1.0, 1.0)
+ANG_Z_RANGE = (-1.0, 1.0)
+AXIS_LIN_X = 'left_y'
+AXIS_LIN_Y = 'left_x'
+AXIS_ANG_Z = 'right_x'
+INVERT_LIN_X = False
+INVERT_LIN_Y = True
+INVERT_ANG_Z = True
+TIMEOUT_SEC = 0.5
+
 
 def clamp(value, lo, hi):
     return min(max(value, lo), hi)
@@ -27,79 +37,23 @@ def stick_to_range(stick_value, lo, hi):
     return clamp(center + stick_value * half, lo, hi)
 
 
-def as_bool(value):
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        return value.strip().lower() in ('1', 'true', 'yes', 'on')
-    return bool(value)
-
-
 class WirelessControl(Node):
     def __init__(self):
         super().__init__('wireless_control')
 
-        # Command ranges used in training.
-        self.declare_parameter('lin_vel_x_min', -1.0)
-        self.declare_parameter('lin_vel_x_max', 1.0)
-        self.declare_parameter('lin_vel_y_min', -1.0)
-        self.declare_parameter('lin_vel_y_max', 1.0)
-        self.declare_parameter('ang_vel_z_min', -1.0)
-        self.declare_parameter('ang_vel_z_max', 1.0)
-        # Heading range is retained as metadata for parity with training config.
-        self.declare_parameter('heading_min', -math.pi)
-        self.declare_parameter('heading_max', math.pi)
+        self.lin_x_range = LIN_X_RANGE
+        self.lin_y_range = LIN_Y_RANGE
+        self.ang_z_range = ANG_Z_RANGE
 
-        # Axis mapping and sign convention.
-        self.declare_parameter('axis_lin_x', 'left_y')
-        self.declare_parameter('axis_lin_y', 'left_x')
-        self.declare_parameter('axis_ang_z', 'right_x')
-        self.declare_parameter('invert_lin_x', False)
-        self.declare_parameter('invert_lin_y', True)
-        self.declare_parameter('invert_ang_z', True)
+        self.axis_lin_x = AXIS_LIN_X
+        self.axis_lin_y = AXIS_LIN_Y
+        self.axis_ang_z = AXIS_ANG_Z
 
-        self.declare_parameter('timeout_sec', 0.5)
-        self.declare_parameter('debug_enabled', True)
-        self.declare_parameter('debug_rate_hz', 5.0)
-        self.declare_parameter('debug_only_nonzero_cmd', False)
+        self.invert_lin_x = INVERT_LIN_X
+        self.invert_lin_y = INVERT_LIN_Y
+        self.invert_ang_z = INVERT_ANG_Z
 
-        self.lin_x_range = (
-            float(self.get_parameter('lin_vel_x_min').value),
-            float(self.get_parameter('lin_vel_x_max').value),
-        )
-        self.lin_y_range = (
-            float(self.get_parameter('lin_vel_y_min').value),
-            float(self.get_parameter('lin_vel_y_max').value),
-        )
-        self.ang_z_range = (
-            float(self.get_parameter('ang_vel_z_min').value),
-            float(self.get_parameter('ang_vel_z_max').value),
-        )
-        self.heading_range = (
-            float(self.get_parameter('heading_min').value),
-            float(self.get_parameter('heading_max').value),
-        )
-
-        self.axis_lin_x = str(self.get_parameter('axis_lin_x').value)
-        self.axis_lin_y = str(self.get_parameter('axis_lin_y').value)
-        self.axis_ang_z = str(self.get_parameter('axis_ang_z').value)
-
-        self.invert_lin_x = as_bool(self.get_parameter('invert_lin_x').value)
-        self.invert_lin_y = as_bool(self.get_parameter('invert_lin_y').value)
-        self.invert_ang_z = as_bool(self.get_parameter('invert_ang_z').value)
-
-        timeout_sec = float(self.get_parameter('timeout_sec').value)
-        self.timeout_duration = Duration(seconds=timeout_sec)
-        self.debug_enabled = as_bool(self.get_parameter('debug_enabled').value)
-        self.debug_rate_hz = max(0.1, float(self.get_parameter('debug_rate_hz').value))
-        self.debug_only_nonzero_cmd = as_bool(
-            self.get_parameter('debug_only_nonzero_cmd').value
-        )
-        self.debug_interval_sec = 1.0 / self.debug_rate_hz
-
-        self._validate_axis_name('axis_lin_x', self.axis_lin_x)
-        self._validate_axis_name('axis_lin_y', self.axis_lin_y)
-        self._validate_axis_name('axis_ang_z', self.axis_ang_z)
+        self.timeout_duration = Duration(seconds=TIMEOUT_SEC)
 
         self.vel_publisher = self.create_publisher(Twist, 'cmd_vel', 10)
         self.buttons_publisher = self.create_publisher(Button, 'buttons', 10)
@@ -112,59 +66,17 @@ class WirelessControl(Node):
         )
 
         self.last_msg_time = self.get_clock().now()
-        self.last_debug_time = self.last_msg_time
         self.last_axis_warn_time = self.last_msg_time
         self.in_timeout = False
         self.timer = self.create_timer(0.1, self.check_timeout)
 
-        self.get_logger().info(
-            'Wireless controller started. '
-            f'lin_x={self.lin_x_range}, lin_y={self.lin_y_range}, ang_z={self.ang_z_range}, '
-            f'heading(meta)={self.heading_range}, timeout={timeout_sec:.2f}s'
-        )
-        self.get_logger().info(
-            'Axis mapping: '
-            f'lin_x={self.axis_lin_x} (invert={self.invert_lin_x}), '
-            f'lin_y={self.axis_lin_y} (invert={self.invert_lin_y}), '
-            f'ang_z={self.axis_ang_z} (invert={self.invert_ang_z})'
-        )
-        self.get_logger().info(
-            f'Debug: enabled={self.debug_enabled} rate={self.debug_rate_hz:.1f}Hz '
-            f'only_nonzero_cmd={self.debug_only_nonzero_cmd}'
-        )
-
-    def _validate_axis_name(self, field_name, axis_name):
-        if axis_name not in STICK_FIELDS:
-            raise ValueError(
-                f'Invalid {field_name}="{axis_name}". '
-                f'Valid options: {list(STICK_FIELDS.keys())}'
-            )
+        self.get_logger().info('Wireless controller started')
 
     def _axis_value(self, msg, axis_name, invert):
         raw_value = float(getattr(msg, STICK_FIELDS[axis_name]))
         if invert:
             raw_value *= -1.0
         return clamp(raw_value, -1.0, 1.0)
-
-    def _elapsed_sec(self, now, since_time):
-        return (now - since_time).nanoseconds * 1e-9
-
-    def _should_debug_log(self, now, twist, keys):
-        if not self.debug_enabled:
-            return False
-        if self._elapsed_sec(now, self.last_debug_time) < self.debug_interval_sec:
-            return False
-
-        cmd_norm = math.sqrt(
-            float(twist.linear.x) ** 2
-            + float(twist.linear.y) ** 2
-            + float(twist.angular.z) ** 2
-        )
-        if self.debug_only_nonzero_cmd and cmd_norm < 1e-3 and int(keys) == 0:
-            return False
-
-        self.last_debug_time = now
-        return True
 
     def _buttons_from_wireless(self, msg):
         button = Button()
@@ -193,7 +105,7 @@ class WirelessControl(Node):
             or raw_ly < -1.0 or raw_ly > 1.0
             or raw_rx < -1.0 or raw_rx > 1.0
             or raw_ry < -1.0 or raw_ry > 1.0
-        ) and self._elapsed_sec(now, self.last_axis_warn_time) >= 0.5:
+        ) and (now - self.last_axis_warn_time).nanoseconds * 1e-9 >= 0.5:
             self.last_axis_warn_time = now
             self.get_logger().warn(
                 'Wireless axes out of expected [-1, 1] range before clamp: '
@@ -214,19 +126,6 @@ class WirelessControl(Node):
         buttons_msg = self._buttons_from_wireless(msg)
         self.buttons_publisher.publish(buttons_msg)
         self.last_msg_time = now
-
-        if self._should_debug_log(now, twist, msg.keys):
-            self.get_logger().info(
-                '[Debug] '
-                f'raw_axes=(lx={raw_lx:.3f} ly={raw_ly:.3f} rx={raw_rx:.3f} ry={raw_ry:.3f}) '
-                f'mapped_sticks=(x={lin_x_stick:.3f} y={lin_y_stick:.3f} wz={ang_z_stick:.3f}) '
-                f'cmd_vel=(x={float(twist.linear.x):.3f} y={float(twist.linear.y):.3f} '
-                f'wz={float(twist.angular.z):.3f}) '
-                f'keys={int(msg.keys)} '
-                f'buttons=(up={bool(buttons_msg.up)} down={bool(buttons_msg.down)} '
-                f'start={bool(buttons_msg.start)} select={bool(buttons_msg.select)} '
-                f'a={bool(buttons_msg.a)} b={bool(buttons_msg.b)})'
-            )
 
     def check_timeout(self):
         now = self.get_clock().now()
