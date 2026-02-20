@@ -15,8 +15,13 @@ def generate_launch_description():
     )
     policy_frequency_arg = DeclareLaunchArgument(
         'policy_frequency',
-        default_value='25',
+        default_value='50',
         description='RL policy inference frequency in Hz',
+    )
+    publish_frequency_arg = DeclareLaunchArgument(
+        'publish_frequency',
+        default_value='200',
+        description='Action publish frequency in Hz (must be multiple of policy_frequency)',
     )
     scale_factor_arg = DeclareLaunchArgument(
         'scale_factor',
@@ -118,6 +123,7 @@ def generate_launch_description():
         [
             policy_name_arg,
             policy_frequency_arg,
+            publish_frequency_arg,
             scale_factor_arg,
             default_hip_q_arg,
             default_thigh_q_arg,
@@ -207,6 +213,7 @@ def generate_launch_description():
                     {
                         'policy_name': LaunchConfiguration('policy_name'),
                         'policy_frequency': LaunchConfiguration('policy_frequency'),
+                        'publish_frequency': LaunchConfiguration('publish_frequency'),
                         'scale_factor': LaunchConfiguration('scale_factor'),
                         'default_hip_q': LaunchConfiguration('default_hip_q'),
                         'default_thigh_q': LaunchConfiguration('default_thigh_q'),

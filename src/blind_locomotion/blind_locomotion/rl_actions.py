@@ -27,7 +27,8 @@ class RLActionsNode(Node):
 
         # Core policy parameters.
         self.declare_parameter('policy_name', 'locomotion_policy')
-        self.declare_parameter('policy_frequency', 25)
+        self.declare_parameter('policy_frequency', 50)
+        self.declare_parameter('publish_frequency', 200)
         self.declare_parameter('scale_factor', 0.25)
         self.declare_parameter('default_hip_q', 0.0)
         self.declare_parameter('default_thigh_q', 0.8)
@@ -45,6 +46,7 @@ class RLActionsNode(Node):
 
         policy_name = str(self.get_parameter('policy_name').value)
         policy_frequency = int(self.get_parameter('policy_frequency').value)
+        publish_frequency = int(self.get_parameter('publish_frequency').value)
         self.scale_factor = float(self.get_parameter('scale_factor').value)
         default_hip_q = float(self.get_parameter('default_hip_q').value)
         default_thigh_q = float(self.get_parameter('default_thigh_q').value)
@@ -86,6 +88,17 @@ class RLActionsNode(Node):
         self.base_height = 0.0
         self.base_vel_z_from_height = 0.0
 
+        # Decimation: publish at publish_frequency, infer at policy_frequency.
+        if publish_frequency % policy_frequency != 0:
+            self.get_logger().fatal(
+                f'publish_frequency ({publish_frequency}) must be an integer '
+                f'multiple of policy_frequency ({policy_frequency})'
+            )
+            raise ValueError('publish_frequency must be divisible by policy_frequency')
+        self.decimation = publish_frequency // policy_frequency
+        self.tick_counter = 0
+        self.held_action_msg = None
+
         self.lowstate_received = False
         self.odom_received = False
         self.base_height_received = False
@@ -120,11 +133,12 @@ class RLActionsNode(Node):
 
         self.load_onnx_model(policy_name)
 
-        self.timer = self.create_timer(1.0 / policy_frequency, self.generate_actions)
+        self.timer = self.create_timer(1.0 / publish_frequency, self.tick)
 
         self.get_logger().info(
-            f'Policy setup: name={policy_name} freq={policy_frequency}Hz '
-            f'scale={self.scale_factor}'
+            f'Policy setup: name={policy_name} '
+            f'inference={policy_frequency}Hz publish={publish_frequency}Hz '
+            f'decimation={self.decimation} scale={self.scale_factor}'
         )
         self.get_logger().info(
             f'Odom gating: topic={self.odom_topic} timeout={self.odom_timeout_sec:.2f}s'
@@ -310,6 +324,14 @@ class RLActionsNode(Node):
 
         return True
 
+    def tick(self):
+        self.tick_counter += 1
+        if self.tick_counter >= self.decimation:
+            self.tick_counter = 0
+            self.generate_actions()
+        if self.held_action_msg is not None:
+            self.publisher.publish(self.held_action_msg)
+
     def generate_actions(self):
         if self.ort_session is None:
             self.get_logger().warn('ONNX model not loaded, skipping inference', once=True)
@@ -371,7 +393,7 @@ class RLActionsNode(Node):
 
         action_msg = Float32MultiArray()
         action_msg.data = processed_actions_ordered
-        self.publisher.publish(action_msg)
+        self.held_action_msg = action_msg
         if self.debug_obs_publisher is not None:
             obs_msg = Float32MultiArray()
             obs_msg.data = obs.tolist()
@@ -447,7 +469,11 @@ class RLActionsNode(Node):
         model_path = os.path.join(share_dir, 'models', f'{policy_name}.onnx')
         self.get_logger().info(f'Model path: {model_path}')
         try:
-            self.ort_session = ort.InferenceSession(model_path)
+            sess_opts = ort.SessionOptions()
+            sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            sess_opts.intra_op_num_threads = 1
+            sess_opts.inter_op_num_threads = 1
+            self.ort_session = ort.InferenceSession(model_path, sess_options=sess_opts)
         except Exception as exc:
             self.get_logger().fatal(f'Failed to load ONNX model: {exc}')
             self.ort_session = None
