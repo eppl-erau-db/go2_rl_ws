@@ -1,4 +1,19 @@
-#!/usr/bin/env python3
+#!/home/srge/workspaces/go2_rl_ws/.venv/bin/python3
+"""
+RL Locomotion Policy Inference Node
+
+Observation space (48-dim):
+  [0:3]   base_lin_vel      - Linear velocity (zeros, no estimator)
+  [3:6]   base_ang_vel      - Angular velocity from IMU gyroscope
+  [6:9]  projected_gravity  - Gravity vector in body frame
+  [9:12] velocity_commands  - Target Velocity: from wireless controller
+  [12:24] joint_pos         - Joint positions (Isaac Lab order, offset by defaults)
+  [24:36] joint_vel         - Joint velocities (Isaac Lab order)
+  [36:48] actions           - Last action output
+
+Action space (12-dim):
+  Raw actions in Isaac Lab joint order
+"""
 import os
 
 import numpy as np
