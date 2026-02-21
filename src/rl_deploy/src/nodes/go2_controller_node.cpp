@@ -1,9 +1,8 @@
 #include <rclcpp/rclcpp.hpp>
-#include <geometry_msgs/msg/twist.hpp>
-#include <std_msgs/msg/float32_multi_array.hpp>
 #include "unitree_go/msg/low_cmd.hpp"
 #include "unitree_go/msg/low_state.hpp"
 #include "blind_locomotion/msg/button.hpp"
+#include "blind_locomotion/msg/joint_position_command.hpp"
 
 #include <algorithm>
 #include <iomanip>
@@ -32,17 +31,15 @@ const char* mode_to_string(rl_deploy::Mode mode) {
 }
 
 // Convert Button message to ButtonState struct
-// Button fields: up, down, start, select, a, b, emergency_sit
-// ButtonState: stand, sit, emergency_sit, start, stop_walking, soft_abort, kill
 rl_deploy::ButtonState buttons_from_msg(const blind_locomotion::msg::Button& m){
   rl_deploy::ButtonState b{};
-  b.stand         = m.up;            // up button -> stand
-  b.sit           = m.down;          // down button -> sit
-  b.emergency_sit = m.emergency_sit; // emergency sit button
-  b.start         = m.start;         // start button -> start walking
-  b.stop_walking  = m.select;        // select button -> stop walking
-  b.soft_abort    = m.a;             // A button -> soft abort (damping)
-  b.kill          = m.b;             // B button -> kill (emergency stop)
+  b.stand         = m.up;
+  b.sit           = m.down;
+  b.emergency_sit = m.emergency_sit;
+  b.start         = m.start;
+  b.stop_walking  = m.select;
+  b.soft_abort    = m.a;
+  b.kill          = m.b;
   return b;
 }
 }
@@ -52,7 +49,7 @@ public:
   Go2ControllerNode() : Node("go2_controller_node") {
     // Declare parameters
     this->declare_parameter<bool>("verbose", true);
-    this->declare_parameter<double>("verbose_rate", 2.0);  // Hz for verbose output
+    this->declare_parameter<double>("verbose_rate", 2.0);
     this->declare_parameter<bool>("enable_joint_limit_monitor", true);
     this->declare_parameter<bool>("debug_enabled", true);
     this->declare_parameter<double>("debug_rate_hz", 5.0);
@@ -64,19 +61,18 @@ public:
     const double debug_rate_hz = std::max(0.1, this->get_parameter("debug_rate_hz").as_double());
     debug_interval_ = 1.0 / debug_rate_hz;
     
-    // Build safety config from parameters
     safety_.enable_joint_limit_monitor = this->get_parameter("enable_joint_limit_monitor").as_bool();
     
-    // Publishers
+    // Publisher
     pub_ = create_publisher<unitree_go::msg::LowCmd>("/lowcmd", 10);
 
     // Subscribers
-    sub_actions_ = create_subscription<std_msgs::msg::Float32MultiArray>(
-      "actions", 10, [this](std_msgs::msg::Float32MultiArray::SharedPtr m){
-        actions_ = m->data;
+    sub_actions_ = create_subscription<blind_locomotion::msg::JointPositionCommand>(
+      "actions", 10, [this](blind_locomotion::msg::JointPositionCommand::SharedPtr m){
+        actions_.assign(m->positions.begin(), m->positions.end());
         last_actions_time_ = this->now();
         if (verbose_) {
-          RCLCPP_DEBUG(get_logger(), "Received actions: size=%zu", m->data.size());
+          RCLCPP_DEBUG(get_logger(), "Received actions: size=%zu", actions_.size());
         }
       });
 
@@ -85,7 +81,6 @@ public:
         auto old_buttons = buttons_;
         buttons_ = buttons_from_msg(*m);
         
-        // Log button presses (only when verbose and button state changes)
         if (verbose_) {
           if (buttons_.stand && !old_buttons.stand) 
             RCLCPP_INFO(get_logger(), "Button: STAND (up) pressed");
@@ -111,13 +106,6 @@ public:
         lowstate_received_ = true;
       });
 
-    sub_cmd_vel_ = create_subscription<geometry_msgs::msg::Twist>(
-      "cmd_vel", 10, [this](geometry_msgs::msg::Twist::SharedPtr m){
-        latest_cmd_vel_ = *m;
-        last_cmd_vel_time_ = this->now();
-        cmd_vel_received_ = true;
-      });
-
     // Control timer at 200Hz
     timer_ = create_wall_timer(std::chrono::milliseconds(5), [this]{ tick(); });
 
@@ -125,7 +113,6 @@ public:
     last_lowstate_time_ = this->now();
     last_actions_time_ = this->now();
     last_verbose_time_ = this->now();
-    last_cmd_vel_time_ = this->now();
     last_debug_time_ = this->now();
 
     RCLCPP_INFO(get_logger(), "Go2ControllerNode started");
@@ -142,13 +129,13 @@ public:
 
 private:
   void tick(){
-    // Safety check: don't send commands until we've received lowstate
     if (!lowstate_received_) {
       return;
     }
 
-    // Safety check: timeout on lowstate (500ms)
     auto now = this->now();
+
+    // Safety: timeout on lowstate (500ms)
     if ((now - last_lowstate_time_).seconds() > 0.5) {
       RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000, 
         "LowState timeout! Entering damping mode.");
@@ -158,7 +145,7 @@ private:
       return;
     }
 
-    // Joint limit safety check (during Walking mode or while recovering from violation)
+    // Joint limit safety check (during Walking or recovering from violation)
     if (safety_.enable_joint_limit_monitor) {
       if (mode_ == rl_deploy::Mode::Walking || joint_limit_triggered_) {
         if (check_joint_limits()) {
@@ -175,17 +162,21 @@ private:
       }
     }
 
-    // Derive status from lowstate
-    auto pq = rl_deploy::evaluate_pose(lowstate_);
+    // Mode-aware posture evaluation: only check what the current mode needs.
+    bool need_stand_check = (mode_ == rl_deploy::Mode::Standing
+                          || mode_ == rl_deploy::Mode::Walking
+                          || mode_ == rl_deploy::Mode::Idle);
+    bool need_sit_check   = (mode_ == rl_deploy::Mode::Sitting
+                          || mode_ == rl_deploy::Mode::EmergencySitting);
+    auto pq = rl_deploy::evaluate_pose(lowstate_, need_stand_check, need_sit_check);
     status_.good_stand = pq.good_stand;
     status_.good_sit   = pq.good_sit;
     status_.is_walking = (mode_ == rl_deploy::Mode::Walking);
 
-    // Choose mode based on FSM
+    // FSM update
     auto old_mode = mode_;
     mode_ = fsm_.update(buttons_, status_);
     
-    // Log mode transitions
     if (mode_ != old_mode) {
       RCLCPP_INFO(get_logger(), "Mode transition: %s -> %s", 
                   mode_to_string(old_mode), mode_to_string(mode_));
@@ -204,7 +195,6 @@ private:
             std::begin(rl_deploy::StandPos), std::end(rl_deploy::StandPos));
       }
       
-      // Check for stale actions (100ms timeout)
       if ((now - last_actions_time_).seconds() > 0.1) {
         RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000,
           "Actions timeout! age=%.1f ms. Continuing to use last received actions.",
@@ -212,11 +202,10 @@ private:
       }
     }
 
-    // Build and publish command
     auto cmd = rl_deploy::make_cmd_for_mode(mode_, lowstate_, safe_actions);
     pub_->publish(cmd);
     
-    // Verbose status output (rate limited)
+    // Rate-limited status logging
     if (debug_enabled_ && (now - last_debug_time_).seconds() >= debug_interval_) {
       last_debug_time_ = now;
       log_status(now);
@@ -237,9 +226,6 @@ private:
       action_max = static_cast<double>(*action_minmax.second);
     }
 
-    const bool cmd_vel_valid = cmd_vel_received_;
-    double cmd_age_ms = cmd_vel_valid ? (now - last_cmd_vel_time_).seconds() * 1000.0 : -1.0;
-
     std::ostringstream status_ss;
     status_ss << std::fixed << std::setprecision(1);
     status_ss
@@ -254,22 +240,8 @@ private:
     } else {
       status_ss << " | action_range: [n/a]";
     }
-    status_ss
-      << " | cmd_vel: ["
-      << std::setprecision(3)
-      << latest_cmd_vel_.linear.x << ", "
-      << latest_cmd_vel_.linear.y << ", "
-      << latest_cmd_vel_.angular.z
-      << std::setprecision(1)
-      << "] | cmd_age_ms: ";
-    if (cmd_vel_valid) {
-      status_ss << cmd_age_ms;
-    } else {
-      status_ss << "n/a";
-    }
     RCLCPP_INFO(get_logger(), "%s", status_ss.str().c_str());
       
-    // Log first 3 joint positions for quick reference
     if (lowstate_received_) {
       RCLCPP_INFO(get_logger(),
         "[Joints] FR: hip=%.2f thigh=%.2f calf=%.2f",
@@ -288,7 +260,6 @@ private:
       action_min = static_cast<double>(*action_minmax.first);
       action_max = static_cast<double>(*action_minmax.second);
     }
-    double cmd_age_ms = cmd_vel_received_ ? (now - last_cmd_vel_time_).seconds() * 1000.0 : -1.0;
 
     std::ostringstream ss;
     ss << std::fixed << std::setprecision(1);
@@ -299,18 +270,6 @@ private:
       ss << std::setprecision(1);
     } else {
       ss << " action_range=[n/a]";
-    }
-    ss << " cmd_vel=["
-       << std::setprecision(3)
-       << latest_cmd_vel_.linear.x << ", "
-       << latest_cmd_vel_.linear.y << ", "
-       << latest_cmd_vel_.angular.z
-       << std::setprecision(1)
-       << "] cmd_age_ms=";
-    if (cmd_vel_received_) {
-      ss << cmd_age_ms;
-    } else {
-      ss << "n/a";
     }
     RCLCPP_INFO(get_logger(), "%s", ss.str().c_str());
   }
@@ -328,26 +287,22 @@ private:
       double soft_min = min_limit + rl_deploy::soft_margin;
       double soft_max = max_limit - rl_deploy::soft_margin;
       
-      // Check if inside soft zone (for auto-reset)
       if (q < soft_min || q > soft_max) {
         all_in_soft_zone = false;
       }
       
-      // Hard limit check
       if (q < min_limit || q > max_limit) {
         RCLCPP_ERROR(get_logger(), 
           "HARD LIMIT: Joint %zu = %.3f (limits: [%.3f, %.3f])",
           i, q, min_limit, max_limit);
         hard_violation = true;
       }
-      // Soft limit warning (only if moving toward limit)
       else if ((q < soft_min && dq < 0) || (q > soft_max && dq > 0)) {
         RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 500,
           "Soft limit: Joint %zu = %.3f, dq = %.2f", i, q, dq);
       }
     }
     
-    // Reset only after emergency sit has completed (mode reached Idle)
     if (joint_limit_triggered_ && all_in_soft_zone && mode_ == rl_deploy::Mode::Idle) {
       RCLCPP_INFO(get_logger(), "All joints in safe zone - limit guard reset");
       joint_limit_triggered_ = false;
@@ -358,16 +313,14 @@ private:
 
   // Publishers & Subscribers
   rclcpp::Publisher<unitree_go::msg::LowCmd>::SharedPtr pub_;
-  rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr sub_actions_;
+  rclcpp::Subscription<blind_locomotion::msg::JointPositionCommand>::SharedPtr sub_actions_;
   rclcpp::Subscription<blind_locomotion::msg::Button>::SharedPtr sub_buttons_;
   rclcpp::Subscription<unitree_go::msg::LowState>::SharedPtr sub_lowstate_;
-  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr sub_cmd_vel_;
   rclcpp::TimerBase::SharedPtr timer_;
 
   // Data/state
   std::vector<float> actions_;
   unitree_go::msg::LowState lowstate_;
-  geometry_msgs::msg::Twist latest_cmd_vel_{};
   rl_deploy::ButtonState buttons_;
   rl_deploy::StatusFlags status_;
   rl_deploy::SafetyConfig safety_;
@@ -377,10 +330,8 @@ private:
   // Safety timestamps
   rclcpp::Time last_lowstate_time_;
   rclcpp::Time last_actions_time_;
-  rclcpp::Time last_cmd_vel_time_;
   bool lowstate_received_{false};
-  bool cmd_vel_received_{false};
-  bool joint_limit_triggered_{false};  // True when joint limit violation detected
+  bool joint_limit_triggered_{false};
   
   // Verbose logging
   bool verbose_{true};

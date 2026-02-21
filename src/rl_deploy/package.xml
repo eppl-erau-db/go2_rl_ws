@@ -12,8 +12,6 @@
   <depend>unitree_go</depend>
   <depend>unitree_api</depend>
   <depend>rclcpp</depend>
-  <depend>geometry_msgs</depend>
-  <depend>std_msgs</depend>
   <depend>rosbag2_cpp</depend>
   <depend>rosidl_runtime_cpp</depend>
   <depend>blind_locomotion</depend>

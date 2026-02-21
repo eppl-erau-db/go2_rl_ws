@@ -1,12 +1,12 @@
-#!/home/srge/workspaces/go2_rl_ws/.venv/bin/python3
+#!/usr/bin/env python3
 """
 RL Locomotion Policy Inference Node
 
 Observation space (48-dim):
-  [0:3]   base_lin_vel      - Linear velocity (zeros, no estimator)
+  [0:3]   base_lin_vel      - Linear velocity from odometry
   [3:6]   base_ang_vel      - Angular velocity from IMU gyroscope
-  [6:9]  projected_gravity  - Gravity vector in body frame
-  [9:12] velocity_commands  - Target Velocity: from wireless controller
+  [6:9]   projected_gravity - Gravity vector in body frame (inverse convention)
+  [9:12]  velocity_commands - Target velocity from wireless controller
   [12:24] joint_pos         - Joint positions (Isaac Lab order, offset by defaults)
   [24:36] joint_vel         - Joint velocities (Isaac Lab order)
   [36:48] actions           - Last action output
@@ -14,18 +14,24 @@ Observation space (48-dim):
 Action space (12-dim):
   Raw actions in Isaac Lab joint order
 """
-import os
 
 import numpy as np
-import onnxruntime as ort
 import rclpy
-from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from scipy.spatial.transform import Rotation as Rot
 from std_msgs.msg import Float32MultiArray
 from unitree_go.msg import LowState
+
+from blind_locomotion.msg import JointPositionCommand
+
+from blind_locomotion.gravity_utils import projected_gravity_inverse
+from blind_locomotion.joint_reorder import (
+    actions_to_unitree_order,
+    read_joint_positions_isaac,
+    read_joint_velocities_isaac,
+)
+from blind_locomotion.onnx_loader import load_onnx_policy
 
 
 def as_bool(value):
@@ -70,6 +76,8 @@ class RLActionsNode(Node):
         )
         self.debug_interval_sec = 1.0 / self.debug_rate_hz
 
+        # Default joint positions in Isaac Lab order (used as observation offset
+        # and as the action-space center point).
         self.q_defaults = np.array([
              0.1, -0.1,  0.1, -0.1,   # hips:   FL, FR, RL, RR
              0.8,  0.8,  1.0,  1.0,    # thighs: FL, FR, RL, RR
@@ -99,7 +107,7 @@ class RLActionsNode(Node):
         self.last_odom_frame_id = None
         self.last_odom_child_frame_id = None
 
-        self.publisher = self.create_publisher(Float32MultiArray, 'actions', 10)
+        self.publisher = self.create_publisher(JointPositionCommand, 'actions', 10)
         self.debug_obs_publisher = None
         self.debug_raw_action_publisher = None
         if self.debug_publish_obs_topic:
@@ -115,7 +123,10 @@ class RLActionsNode(Node):
         self.create_subscription(Twist, 'cmd_vel', self.cmd_vel_callback, 10)
         self.create_subscription(Odometry, self.odom_topic, self.odom_callback, 10)
 
-        self.load_onnx_model(policy_name)
+        self.ort_session = load_onnx_policy(
+            self.get_logger(), policy_name,
+            expected_input_dim=48, expected_output_dim=12,
+        )
 
         self.timer = self.create_timer(1.0 / policy_frequency, self.generate_actions)
 
@@ -145,43 +156,10 @@ class RLActionsNode(Node):
 
         self.ang_speed = np.array(msg.imu_state.gyroscope[0:3], dtype=np.float32)
         self.latest_quat_wxyz = np.array(msg.imu_state.quaternion[0:4], dtype=np.float32)
-        self.proj_gravity = self.body_projected_gravity_inverse(self.latest_quat_wxyz)
+        self.proj_gravity = projected_gravity_inverse(self.latest_quat_wxyz)
 
-        self.q = np.array(
-            [
-                msg.motor_state[3].q,   # FL_hip
-                msg.motor_state[0].q,   # FR_hip
-                msg.motor_state[9].q,   # RL_hip
-                msg.motor_state[6].q,   # RR_hip
-                msg.motor_state[4].q,   # FL_thigh
-                msg.motor_state[1].q,   # FR_thigh
-                msg.motor_state[10].q,  # RL_thigh
-                msg.motor_state[7].q,   # RR_thigh
-                msg.motor_state[5].q,   # FL_calf
-                msg.motor_state[2].q,   # FR_calf
-                msg.motor_state[11].q,  # RL_calf
-                msg.motor_state[8].q,   # RR_calf
-            ],
-            dtype=np.float32,
-        ) - self.q_defaults
-
-        self.dq = np.array(
-            [
-                msg.motor_state[3].dq,   # FL_hip
-                msg.motor_state[0].dq,   # FR_hip
-                msg.motor_state[9].dq,   # RL_hip
-                msg.motor_state[6].dq,   # RR_hip
-                msg.motor_state[4].dq,   # FL_thigh
-                msg.motor_state[1].dq,   # FR_thigh
-                msg.motor_state[10].dq,  # RL_thigh
-                msg.motor_state[7].dq,   # RR_thigh
-                msg.motor_state[5].dq,   # FL_calf
-                msg.motor_state[2].dq,   # FR_calf
-                msg.motor_state[11].dq,  # RL_calf
-                msg.motor_state[8].dq,   # RR_calf
-            ],
-            dtype=np.float32,
-        )
+        self.q = read_joint_positions_isaac(msg.motor_state) - self.q_defaults
+        self.dq = read_joint_velocities_isaac(msg.motor_state)
 
     def odom_callback(self, msg):
         self.base_lin_vel = np.array(
@@ -314,25 +292,11 @@ class RLActionsNode(Node):
             self.get_logger().error(f'Inference failed: {exc}')
             self.raw_action = np.zeros(12, dtype=np.float32)
 
-        processed = (self.raw_action * self.scale_factor + self.q_defaults).tolist()
-        processed_np = np.asarray(processed, dtype=np.float32)
-        processed_actions_ordered = [
-            processed[1],   # FR_hip
-            processed[5],   # FR_thigh
-            processed[9],   # FR_calf
-            processed[0],   # FL_hip
-            processed[4],   # FL_thigh
-            processed[8],   # FL_calf
-            processed[3],   # RR_hip
-            processed[7],   # RR_thigh
-            processed[11],  # RR_calf
-            processed[2],   # RL_hip
-            processed[6],   # RL_thigh
-            processed[10],  # RL_calf
-        ]
+        processed = self.raw_action * self.scale_factor + self.q_defaults
+        processed_unitree = actions_to_unitree_order(processed)
 
-        action_msg = Float32MultiArray()
-        action_msg.data = processed_actions_ordered
+        action_msg = JointPositionCommand()
+        action_msg.positions = processed_unitree
         self.publisher.publish(action_msg)
         if self.debug_obs_publisher is not None:
             obs_msg = Float32MultiArray()
@@ -355,9 +319,9 @@ class RLActionsNode(Node):
             )
 
             raw_min, raw_max, raw_norm = self._slice_stats(self.raw_action)
-            proc_min, proc_max, proc_norm = self._slice_stats(processed_np)
+            proc_min, proc_max, proc_norm = self._slice_stats(processed)
             raw_mean = float(np.mean(self.raw_action))
-            proc_mean = float(np.mean(processed_np))
+            proc_mean = float(np.mean(processed))
             raw_abs_gt_one = int(np.count_nonzero(np.abs(self.raw_action) > 1.0))
 
             blv_min, blv_max, blv_norm = self._slice_stats(obs_slices['base_lin_vel'])
@@ -386,57 +350,6 @@ class RLActionsNode(Node):
                 f'processed[min={proc_min:.3f},max={proc_max:.3f},mean={proc_mean:.3f},'
                 f'norm={proc_norm:.3f}]'
             )
-
-    def body_projected_gravity_inverse(self, quat_wxyz):
-        g_norm_world = np.array([0.0, 0.0, -1.0], dtype=np.float32)
-        rot = Rot.from_quat([quat_wxyz[1], quat_wxyz[2], quat_wxyz[3], quat_wxyz[0]])
-        return (rot.inv().as_matrix() @ g_norm_world).astype(np.float32)
-
-    def _extract_last_dim(self, shape):
-        if not shape:
-            return None
-        dim = shape[-1]
-        try:
-            return int(dim)
-        except (TypeError, ValueError):
-            return None
-
-    def load_onnx_model(self, policy_name):
-        share_dir = get_package_share_directory('blind_locomotion')
-        model_path = os.path.join(share_dir, 'models', f'{policy_name}.onnx')
-        self.get_logger().info(f'Model path: {model_path}')
-        try:
-            self.ort_session = ort.InferenceSession(model_path)
-        except Exception as exc:
-            self.get_logger().fatal(f'Failed to load ONNX model: {exc}')
-            self.ort_session = None
-            return
-
-        input_shape = self.ort_session.get_inputs()[0].shape
-        output_shape = self.ort_session.get_outputs()[0].shape
-        input_dim = self._extract_last_dim(input_shape)
-        output_dim = self._extract_last_dim(output_shape)
-
-        if input_dim != 48:
-            self.get_logger().fatal(
-                f'Invalid model input dim: expected 48, got {input_shape}. '
-                'Refusing to run.'
-            )
-            self.ort_session = None
-            return
-
-        if output_dim != 12:
-            self.get_logger().fatal(
-                f'Invalid model output dim: expected 12, got {output_shape}. '
-                'Refusing to run.'
-            )
-            self.ort_session = None
-            return
-
-        self.get_logger().info(
-            f'Successfully loaded ONNX model: {policy_name} '
-            f'(input={input_shape}, output={output_shape})'
-        )
 
 
 def main(args=None):

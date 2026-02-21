@@ -15,6 +15,7 @@ find_package(std_msgs REQUIRED)
 # Generate custom messages
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Button.msg"
+  "msg/JointPositionCommand.msg"
 )
 
 # Install Python modules - use install directly instead of ament_python_install_package

@@ -1,6 +1,6 @@
 /**
  * @file posture_monitor.cpp
- * @brief Implementation of posture evaluation for Go2 robot.
+ * @brief Implementation of mode-aware posture evaluation for Go2 robot.
  * @author Gabriel Rodriguez
  */
 
@@ -10,30 +10,38 @@
 
 namespace rl_deploy {
 
-PoseQuality evaluate_pose(const unitree_go::msg::LowState& state) {
+PoseQuality evaluate_pose(
+    const unitree_go::msg::LowState& state,
+    bool check_stand,
+    bool check_sit)
+{
     PoseQuality result{};
-    
-    // Check if all joints are within tolerance of standing position
+
     bool all_stand_ok = true;
     bool all_sit_ok = true;
-    
+
     for (size_t i = 0; i < 12; ++i) {
         double current_pos = state.motor_state[i].q;
-        
-        // Check standing position
-        if (std::abs(current_pos - StandPos[i]) > position_tolerance) {
-            all_stand_ok = false;
+
+        if (check_stand && all_stand_ok) {
+            if (std::abs(current_pos - StandPos[i]) > position_tolerance) {
+                all_stand_ok = false;
+            }
         }
-        
-        // Check sitting position
-        if (std::abs(current_pos - SitPos[i]) > position_tolerance) {
-            all_sit_ok = false;
+
+        if (check_sit && all_sit_ok) {
+            if (std::abs(current_pos - SitPos[i]) > position_tolerance) {
+                all_sit_ok = false;
+            }
         }
+
+        // Early exit: both checks failed, no need to continue.
+        if (!all_stand_ok && !all_sit_ok) break;
     }
-    
-    result.good_stand = all_stand_ok;
-    result.good_sit = all_sit_ok;
-    
+
+    if (check_stand) result.good_stand = all_stand_ok;
+    if (check_sit)   result.good_sit   = all_sit_ok;
+
     return result;
 }
 

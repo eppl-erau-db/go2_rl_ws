@@ -5,7 +5,7 @@ Publishes standing position actions without any RL inference.
 """
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32MultiArray
+from blind_locomotion.msg import JointPositionCommand
 
 
 class TestActionPublisher(Node):
@@ -30,7 +30,7 @@ class TestActionPublisher(Node):
         
         # Publisher
         self.publisher = self.create_publisher(
-            Float32MultiArray,
+            JointPositionCommand,
             'actions',
             10
         )
@@ -42,8 +42,8 @@ class TestActionPublisher(Node):
         self.get_logger().info(f'Publishing standing position: {self.standing_actions}')
         
     def publish_actions(self):
-        msg = Float32MultiArray()
-        msg.data = self.standing_actions
+        msg = JointPositionCommand()
+        msg.positions = self.standing_actions
         self.publisher.publish(msg)
         
         if self.verbose:
