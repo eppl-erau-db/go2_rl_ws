@@ -1,5 +1,10 @@
 # Unitree Go2 RL Deployment
 
+## Development TODO's
+- Fix lines 309-315 of `rl_actions.py` to reset raw actions to nominal standing position with scale factor and offsets reverse applied. 
+- Add logging utility class to the `rl_deploy` packages to remove cumbersome logging in node. 
+
+
 ## Introduction and Scope
 
 A ROS2 Humble workspace for deploying RL-trained blind locomotion policies on the Unitree Go2 quadruped robot. Policies are trained using Isaac Lab (NVIDIA simulation) and exported to ONNX format for real-world deployment.
