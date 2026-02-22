@@ -21,7 +21,7 @@ Before setup, ensure you have:
 
 ## Setup
 
-### 1. Clone Repository
+### 1. Clone the repository
 
 ```bash
 git clone --recurse-submodules https://github.com/eppl-erau-db/go2_rl_ws
@@ -29,7 +29,7 @@ git switch {BRANCH_NAME}
 git pull --recurse-submodules
 ```
 
-### 2. Build Unitree SDK
+### 2. Build the unitree sdk
 
 Build the SDK for the sport mode shutoff utility:
 
@@ -40,22 +40,14 @@ cmake ..
 make
 ```
 
-Verify the build succeeded:
+### 3. Navigate to and export workspace directory
+
 ```bash
 cd ../../../
 export WORKSPACE_DIR="$PWD"
-python3 -m venv .venv
 ```
 
-### 3. Python Environment Setup
-
-```bash
-cd $WORKSPACE_DIR
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-### 4. Install Dependencies
+### 3. Install requirements
 
 ```bash
 pip install onnxruntime
@@ -63,7 +55,7 @@ sudo apt install ros-humble-rmw-cyclonedds-cpp
 sudo apt install ros-humble-rosidl-generator-dds-idl
 ```
 
-### 5. Build CycloneDDS
+### 5. Build cycloneDDS
 
 **Important:** Ensure you have **NOT** sourced ROS2 before this step.
 
@@ -75,7 +67,7 @@ cd $WORKSPACE_DIR
 colcon build --packages-select cyclonedds
 ```
 
-### 6. Build ROS2 Packages
+### 6. Build ROS2 packages
 
 Source ROS2 and build the workspace:
 
