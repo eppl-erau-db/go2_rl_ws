@@ -28,14 +28,6 @@ from std_msgs.msg import Float32MultiArray
 from unitree_go.msg import LowState
 
 
-def as_bool(value):
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        return value.strip().lower() in ('1', 'true', 'yes', 'on')
-    return bool(value)
-
-
 class RLActionsNode(Node):
     def __init__(self):
         super().__init__('rl_actions_publisher')
@@ -48,10 +40,6 @@ class RLActionsNode(Node):
         self.declare_parameter('odom_topic', '/odom')
         self.declare_parameter('odom_timeout_sec', 0.5)
         self.declare_parameter('cmd_vel_deadband', 0.1)
-        self.declare_parameter('debug_enabled', True)
-        self.declare_parameter('debug_rate_hz', 5.0)
-        self.declare_parameter('debug_publish_obs_topic', False)
-        self.declare_parameter('debug_publish_action_topic', False)
 
         policy_name = str(self.get_parameter('policy_name').value)
         policy_frequency = int(self.get_parameter('policy_frequency').value)
@@ -60,15 +48,6 @@ class RLActionsNode(Node):
         self.odom_topic = str(self.get_parameter('odom_topic').value)
         self.odom_timeout_sec = float(self.get_parameter('odom_timeout_sec').value)
         self.cmd_vel_deadband = float(self.get_parameter('cmd_vel_deadband').value)
-        self.debug_enabled = as_bool(self.get_parameter('debug_enabled').value)
-        self.debug_rate_hz = max(0.1, float(self.get_parameter('debug_rate_hz').value))
-        self.debug_publish_obs_topic = as_bool(
-            self.get_parameter('debug_publish_obs_topic').value
-        )
-        self.debug_publish_action_topic = as_bool(
-            self.get_parameter('debug_publish_action_topic').value
-        )
-        self.debug_interval_sec = 1.0 / self.debug_rate_hz
 
         self.q_defaults = np.array([
              0.1, -0.1,  0.1, -0.1,   # hips:   FL, FR, RL, RR
@@ -93,23 +72,12 @@ class RLActionsNode(Node):
         self.last_lowstate_time = now
         self.last_odom_time = now
         self.last_cmd_vel_time = now
-        self.last_debug_time = now
         self.last_nonfinite_log_time = {}
         self.latest_quat_wxyz = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
         self.last_odom_frame_id = None
         self.last_odom_child_frame_id = None
 
         self.publisher = self.create_publisher(Float32MultiArray, 'actions', 10)
-        self.debug_obs_publisher = None
-        self.debug_raw_action_publisher = None
-        if self.debug_publish_obs_topic:
-            self.debug_obs_publisher = self.create_publisher(
-                Float32MultiArray, 'debug/rl_obs', 10
-            )
-        if self.debug_publish_action_topic:
-            self.debug_raw_action_publisher = self.create_publisher(
-                Float32MultiArray, 'debug/rl_raw_action', 10
-            )
 
         self.create_subscription(LowState, '/lowstate', self.lowstate_callback, 10)
         self.create_subscription(Twist, 'cmd_vel', self.cmd_vel_callback, 10)
@@ -130,12 +98,6 @@ class RLActionsNode(Node):
             'Obs layout (48): [0:3] base_lin_vel, [3:6] base_ang_vel, '
             '[6:9] projected_gravity, [9:12] velocity_commands, '
             '[12:24] joint_pos, [24:36] joint_vel, [36:48] actions'
-        )
-        self.get_logger().info(
-            'Debug config: '
-            f'enabled={self.debug_enabled} rate={self.debug_rate_hz:.1f}Hz '
-            f'publish_obs={self.debug_publish_obs_topic} '
-            f'publish_raw_action={self.debug_publish_action_topic}'
         )
         self.get_logger().info('Gravity projection: mode=inverse (hardcoded)')
 
@@ -221,14 +183,6 @@ class RLActionsNode(Node):
     def _elapsed_sec(self, now, since_time):
         return (now - since_time).nanoseconds * 1e-9
 
-    def _should_debug_log(self, now):
-        if not self.debug_enabled:
-            return False
-        if self._elapsed_sec(now, self.last_debug_time) < self.debug_interval_sec:
-            return False
-        self.last_debug_time = now
-        return True
-
     def _log_nonfinite_slice(self, name, values, now):
         finite_mask = np.isfinite(values)
         if finite_mask.all():
@@ -243,13 +197,6 @@ class RLActionsNode(Node):
         self.get_logger().error(
             f'Observation slice "{name}" has non-finite values at local indices {local_bad}: '
             f'{np.array2string(values, precision=4)}'
-        )
-
-    def _slice_stats(self, values):
-        return (
-            float(np.min(values)),
-            float(np.max(values)),
-            float(np.linalg.norm(values)),
         )
 
     def _obs_ready(self, now):
@@ -315,7 +262,6 @@ class RLActionsNode(Node):
             self.raw_action = np.zeros(12, dtype=np.float32)
 
         processed = (self.raw_action * self.scale_factor + self.q_defaults).tolist()
-        processed_np = np.asarray(processed, dtype=np.float32)
         processed_actions_ordered = [
             processed[1],   # FR_hip
             processed[5],   # FR_thigh
@@ -334,58 +280,8 @@ class RLActionsNode(Node):
         action_msg = Float32MultiArray()
         action_msg.data = processed_actions_ordered
         self.publisher.publish(action_msg)
-        if self.debug_obs_publisher is not None:
-            obs_msg = Float32MultiArray()
-            obs_msg.data = obs.tolist()
-            self.debug_obs_publisher.publish(obs_msg)
-        if self.debug_raw_action_publisher is not None:
-            raw_action_msg = Float32MultiArray()
-            raw_action_msg.data = self.raw_action.tolist()
-            self.debug_raw_action_publisher.publish(raw_action_msg)
 
         self.last_actions = self.raw_action.copy()
-
-        if self._should_debug_log(now):
-            lowstate_age_ms = 1000.0 * self._elapsed_sec(now, self.last_lowstate_time)
-            odom_age_ms = 1000.0 * self._elapsed_sec(now, self.last_odom_time)
-            cmd_vel_age_ms = (
-                1000.0 * self._elapsed_sec(now, self.last_cmd_vel_time)
-                if self.cmd_vel_received
-                else -1.0
-            )
-
-            raw_min, raw_max, raw_norm = self._slice_stats(self.raw_action)
-            proc_min, proc_max, proc_norm = self._slice_stats(processed_np)
-            raw_mean = float(np.mean(self.raw_action))
-            proc_mean = float(np.mean(processed_np))
-            raw_abs_gt_one = int(np.count_nonzero(np.abs(self.raw_action) > 1.0))
-
-            blv_min, blv_max, blv_norm = self._slice_stats(obs_slices['base_lin_vel'])
-            bav_min, bav_max, bav_norm = self._slice_stats(obs_slices['base_ang_vel'])
-            grav_min, grav_max, grav_norm = self._slice_stats(obs_slices['projected_gravity'])
-            cmd_min, cmd_max, cmd_norm = self._slice_stats(obs_slices['velocity_commands'])
-            q_min, q_max, q_norm = self._slice_stats(obs_slices['joint_pos'])
-            dq_min, dq_max, dq_norm = self._slice_stats(obs_slices['joint_vel'])
-            act_hist_min, act_hist_max, act_hist_norm = self._slice_stats(obs_slices['actions'])
-
-            cmd_age_text = f'{cmd_vel_age_ms:.1f}' if cmd_vel_age_ms >= 0.0 else 'n/a'
-            self.get_logger().info(
-                '[Debug] '
-                f'freshness_ms=(lowstate={lowstate_age_ms:.1f}, odom={odom_age_ms:.1f}, '
-                f'cmd_vel={cmd_age_text}) '
-                f'obs_stats='
-                f'blv[min={blv_min:.3f},max={blv_max:.3f},norm={blv_norm:.3f}] '
-                f'bav[min={bav_min:.3f},max={bav_max:.3f},norm={bav_norm:.3f}] '
-                f'grav[min={grav_min:.3f},max={grav_max:.3f},norm={grav_norm:.3f}] '
-                f'cmd[min={cmd_min:.3f},max={cmd_max:.3f},norm={cmd_norm:.3f}] '
-                f'q[min={q_min:.3f},max={q_max:.3f},norm={q_norm:.3f}] '
-                f'dq[min={dq_min:.3f},max={dq_max:.3f},norm={dq_norm:.3f}] '
-                f'actions[min={act_hist_min:.3f},max={act_hist_max:.3f},norm={act_hist_norm:.3f}] '
-                f'raw_action[min={raw_min:.3f},max={raw_max:.3f},mean={raw_mean:.3f},'
-                f'norm={raw_norm:.3f},abs_gt_1={raw_abs_gt_one}] '
-                f'processed[min={proc_min:.3f},max={proc_max:.3f},mean={proc_mean:.3f},'
-                f'norm={proc_norm:.3f}]'
-            )
 
     def body_projected_gravity_inverse(self, quat_wxyz):
         g_norm_world = np.array([0.0, 0.0, -1.0], dtype=np.float32)
