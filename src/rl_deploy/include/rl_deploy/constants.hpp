@@ -64,4 +64,6 @@ constexpr std::array<double, 12> JointMax = {
 // Soft margin for early warning (radians inside hard bounds)
 constexpr double soft_margin = 0.10;
 
+constexpr int num_joints = 12;
+
 } // namespace rl_deploy

@@ -118,8 +118,11 @@ public:
         cmd_vel_received_ = true;
       });
 
+    // Posture monitor
+    posture_monitor_ = std::make_unique<rl_deploy::PostureMonitor>(this->get_logger());
+
     // Control timer at 200Hz
-    timer_ = create_wall_timer(std::chrono::milliseconds(5), [this]{ tick(); });
+    timer_ = create_wall_timer(std::chrono::milliseconds(5), [this]{ tick(); });  
 
     // Initialize timestamps
     last_lowstate_time_ = this->now();
@@ -142,41 +145,39 @@ public:
 
 private:
   void tick(){
-    // Safety check: don't send commands until we've received lowstate
+    auto now = this->now();
+
+    // lowstate not recieved check
     if (!lowstate_received_) {
       return;
     }
 
-    // Safety check: timeout on lowstate (500ms)
-    auto now = this->now();
-    if ((now - last_lowstate_time_).seconds() > 0.5) {
-      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000, 
-        "LowState timeout! Entering damping mode.");
-      mode_ = rl_deploy::Mode::Damping;
-      auto cmd = rl_deploy::make_cmd_for_mode(mode_, lowstate_, {});
-      pub_->publish(cmd);
-      return;
-    }
-
-    // Joint limit safety check (during Walking mode or while recovering from violation)
+    // joint limit safety check
     if (safety_.enable_joint_limit_monitor) {
       if (mode_ == rl_deploy::Mode::Walking || joint_limit_triggered_) {
-        if (check_joint_limits()) {
+        auto jlr = posture_monitor_->check_joint_limits(lowstate_);
+
+        if (jlr.hard_violation) {
           if (!joint_limit_triggered_) {
-            RCLCPP_ERROR(get_logger(), 
+            RCLCPP_ERROR(get_logger(),
               "Joint limit violation! Transitioning to EMERGENCY_SITTING.");
             joint_limit_triggered_ = true;
           }
           mode_ = rl_deploy::Mode::EmergencySitting;
-          auto cmd = rl_deploy::make_cmd_for_mode(mode_, lowstate_, {});
-          pub_->publish(cmd);
+          pub_->publish(rl_deploy::make_cmd_for_mode(mode_, lowstate_, {}));
           return;
+        }
+
+        // reset logic stays system-level (mode is owned by node)
+        if (joint_limit_triggered_ && jlr.all_in_soft_zone && mode_ == rl_deploy::Mode::Idle) {
+          RCLCPP_INFO(get_logger(), "All joints in safe zone - limit guard reset");
+          joint_limit_triggered_ = false;
         }
       }
     }
 
     // Derive status from lowstate
-    auto pq = rl_deploy::evaluate_pose(lowstate_);
+    auto pq = posture_monitor_->evaluate_pose(lowstate_);
     status_.good_stand = pq.good_stand;
     status_.good_sit   = pq.good_sit;
     status_.is_walking = (mode_ == rl_deploy::Mode::Walking);
@@ -315,47 +316,6 @@ private:
     RCLCPP_INFO(get_logger(), "%s", ss.str().c_str());
   }
 
-  // Check joint limits against LowState - returns true if hard violation detected
-  bool check_joint_limits() {
-    bool hard_violation = false;
-    bool all_in_soft_zone = true;
-    
-    for (size_t i = 0; i < 12; ++i) {
-      double q = lowstate_.motor_state[i].q;
-      double dq = lowstate_.motor_state[i].dq;
-      double min_limit = rl_deploy::JointMin[i];
-      double max_limit = rl_deploy::JointMax[i];
-      double soft_min = min_limit + rl_deploy::soft_margin;
-      double soft_max = max_limit - rl_deploy::soft_margin;
-      
-      // Check if inside soft zone (for auto-reset)
-      if (q < soft_min || q > soft_max) {
-        all_in_soft_zone = false;
-      }
-      
-      // Hard limit check
-      if (q < min_limit || q > max_limit) {
-        RCLCPP_ERROR(get_logger(), 
-          "HARD LIMIT: Joint %zu = %.3f (limits: [%.3f, %.3f])",
-          i, q, min_limit, max_limit);
-        hard_violation = true;
-      }
-      // Soft limit warning (only if moving toward limit)
-      else if ((q < soft_min && dq < 0) || (q > soft_max && dq > 0)) {
-        RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 500,
-          "Soft limit: Joint %zu = %.3f, dq = %.2f", i, q, dq);
-      }
-    }
-    
-    // Reset only after emergency sit has completed (mode reached Idle)
-    if (joint_limit_triggered_ && all_in_soft_zone && mode_ == rl_deploy::Mode::Idle) {
-      RCLCPP_INFO(get_logger(), "All joints in safe zone - limit guard reset");
-      joint_limit_triggered_ = false;
-    }
-    
-    return hard_violation;
-  }
-
   // Publishers & Subscribers
   rclcpp::Publisher<unitree_go::msg::LowCmd>::SharedPtr pub_;
   rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr sub_actions_;
@@ -373,6 +333,7 @@ private:
   rl_deploy::SafetyConfig safety_;
   rl_deploy::Mode mode_{rl_deploy::Mode::Idle};
   rl_deploy::ModeStateMachine fsm_;
+  std::unique_ptr<rl_deploy::PostureMonitor> posture_monitor_;
   
   // Safety timestamps
   rclcpp::Time last_lowstate_time_;

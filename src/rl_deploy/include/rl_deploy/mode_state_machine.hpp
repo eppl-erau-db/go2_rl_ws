@@ -1,9 +1,3 @@
-/**
- * @file mode_state_machine.hpp
- * @brief Stateful FSM for robot mode control with latching behavior
- * @author Gabriel Rodriguez
- */
-
 #pragma once
 #include "rl_deploy/types.hpp"
 

@@ -1,9 +1,3 @@
-/**
- * @file lowcmd_builder.cpp
- * @brief Implementation of motor command building for different control modes.
- * @author Gabriel Rodriguez
- */
-
 #include "rl_deploy/lowcmd_builder.hpp"
 #include "rl_deploy/constants.hpp"
 #include "motor_crc.h"
@@ -40,7 +34,7 @@ static unitree_go::msg::LowCmd make_idle_cmd() {
 }
 
 // Build command for Standing mode - move to stand position
-static unitree_go::msg::LowCmd make_stand_cmd(const unitree_go::msg::LowState& state) {
+static unitree_go::msg::LowCmd make_stand_cmd() {
   auto cmd = init_cmd();
   
   for (size_t i = 0; i < 12; ++i) {
@@ -57,7 +51,7 @@ static unitree_go::msg::LowCmd make_stand_cmd(const unitree_go::msg::LowState& s
 }
 
 // Build command for Sitting mode - move to sit position
-static unitree_go::msg::LowCmd make_sit_cmd(const unitree_go::msg::LowState& state) {
+static unitree_go::msg::LowCmd make_sit_cmd() {
   auto cmd = init_cmd();
   
   for (size_t i = 0; i < 12; ++i) {
@@ -74,7 +68,7 @@ static unitree_go::msg::LowCmd make_sit_cmd(const unitree_go::msg::LowState& sta
 }
 
 // Build command for Emergency Sitting mode - slower, more damped descent for safety recovery
-static unitree_go::msg::LowCmd make_emergency_sit_cmd(const unitree_go::msg::LowState& state) {
+static unitree_go::msg::LowCmd make_emergency_sit_cmd() {
   auto cmd = init_cmd();
   
   for (size_t i = 0; i < 12; ++i) {
@@ -171,13 +165,13 @@ unitree_go::msg::LowCmd make_cmd_for_mode(
       return make_idle_cmd();
     
     case Mode::Standing:
-      return make_stand_cmd(latest_state);
+      return make_stand_cmd();
     
     case Mode::Sitting:
-      return make_sit_cmd(latest_state);
+      return make_sit_cmd();
     
     case Mode::EmergencySitting:
-      return make_emergency_sit_cmd(latest_state);
+      return make_emergency_sit_cmd();
     
     case Mode::Walking:
       return make_walk_cmd(latest_state, actions);
