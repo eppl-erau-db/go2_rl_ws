@@ -1,18 +1,10 @@
 #!/home/srge/workspaces/go2_rl_ws/.venv/bin/python3
 """
-RL Locomotion Policy Inference Node
+RL Locomotion Policy Inference Node.
 
-Observation space (48-dim):
-  [0:3]   base_lin_vel      - Linear velocity (zeros, no estimator)
-  [3:6]   base_ang_vel      - Angular velocity from IMU gyroscope
-  [6:9]  projected_gravity  - Gravity vector in body frame
-  [9:12] velocity_commands  - Target Velocity: from wireless controller
-  [12:24] joint_pos         - Joint positions (Isaac Lab order, offset by defaults)
-  [24:36] joint_vel         - Joint velocities (Isaac Lab order)
-  [36:48] actions           - Last action output
-
-Action space (12-dim):
-  Raw actions in Isaac Lab joint order
+Observation space is selected automatically from ONNX input dim:
+  - 48-dim (flat): no base_height
+  - 49-dim (height-aware): includes base_height at index [6:7]
 """
 import os
 
@@ -24,8 +16,31 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation as Rot
-from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Float32, Float32MultiArray
 from unitree_go.msg import LowState
+
+
+OBS_LAYOUTS = {
+    48: {
+        'base_lin_vel': slice(0, 3),
+        'base_ang_vel': slice(3, 6),
+        'projected_gravity': slice(6, 9),
+        'cmd_vel': slice(9, 12),
+        'joint_pos': slice(12, 24),
+        'joint_vel': slice(24, 36),
+        'actions': slice(36, 48),
+    },
+    49: {
+        'base_lin_vel': slice(0, 3),
+        'base_ang_vel': slice(3, 6),
+        'base_height': slice(6, 7),
+        'projected_gravity': slice(7, 10),
+        'cmd_vel': slice(10, 13),
+        'joint_pos': slice(13, 25),
+        'joint_vel': slice(25, 37),
+        'actions': slice(37, 49),
+    },
+}
 
 
 class RLActionsNode(Node):
@@ -40,6 +55,8 @@ class RLActionsNode(Node):
         self.declare_parameter('odom_topic', '/odom')
         self.declare_parameter('odom_timeout_sec', 0.5)
         self.declare_parameter('cmd_vel_deadband', 0.1)
+        self.declare_parameter('base_height_topic', '/base_height')
+        self.declare_parameter('base_height_timeout_sec', 0.5)
 
         policy_name = str(self.get_parameter('policy_name').value)
         policy_frequency = int(self.get_parameter('policy_frequency').value)
@@ -48,11 +65,13 @@ class RLActionsNode(Node):
         self.odom_topic = str(self.get_parameter('odom_topic').value)
         self.odom_timeout_sec = float(self.get_parameter('odom_timeout_sec').value)
         self.cmd_vel_deadband = float(self.get_parameter('cmd_vel_deadband').value)
+        self.base_height_topic = str(self.get_parameter('base_height_topic').value)
+        self.base_height_timeout_sec = float(self.get_parameter('base_height_timeout_sec').value)
 
         self.q_defaults = np.array([
              0.1, -0.1,  0.1, -0.1,   # hips:   FL, FR, RL, RR
-             0.8,  0.8,  1.0,  1.0,    # thighs: FL, FR, RL, RR
-            -1.5, -1.5, -1.5, -1.5,    # calfs:  FL, FR, RL, RR
+             0.8,  0.8,  1.0,  1.0,   # thighs: FL, FR, RL, RR
+            -1.5, -1.5, -1.5, -1.5,   # calfs:  FL, FR, RL, RR
         ], dtype=np.float32)
 
         # Dynamic state.
@@ -60,6 +79,7 @@ class RLActionsNode(Node):
         self.ang_speed = np.zeros(3, dtype=np.float32)
         self.proj_gravity = np.zeros(3, dtype=np.float32)
         self.velocity_commands = np.zeros(3, dtype=np.float32)
+        self.base_height = np.float32(0.0)
         self.q = np.zeros(12, dtype=np.float32)
         self.dq = np.zeros(12, dtype=np.float32)
         self.raw_action = np.zeros(12, dtype=np.float32)
@@ -68,14 +88,23 @@ class RLActionsNode(Node):
         self.lowstate_received = False
         self.odom_received = False
         self.cmd_vel_received = False
+        self.base_height_received = False
         now = self.get_clock().now()
         self.last_lowstate_time = now
         self.last_odom_time = now
         self.last_cmd_vel_time = now
+        self.last_base_height_time = now
         self.last_nonfinite_log_time = {}
         self.latest_quat_wxyz = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
         self.last_odom_frame_id = None
         self.last_odom_child_frame_id = None
+        self.base_height_subscription = None
+
+        # Model/observation layout gets finalized after loading ONNX metadata.
+        self.model_input_dim = 48
+        self.use_base_height_obs = False
+        self.obs_slices = OBS_LAYOUTS[48]
+        self.ort_session = None
 
         self.publisher = self.create_publisher(Float32MultiArray, 'actions', 10)
 
@@ -84,6 +113,19 @@ class RLActionsNode(Node):
         self.create_subscription(Odometry, self.odom_topic, self.odom_callback, 10)
 
         self.load_onnx_model(policy_name)
+        if self.use_base_height_obs:
+            self.base_height_subscription = self.create_subscription(
+                Float32,
+                self.base_height_topic,
+                self.base_height_callback,
+                10,
+            )
+            self.get_logger().info(
+                f'Base-height gating: topic={self.base_height_topic} '
+                f'timeout={self.base_height_timeout_sec:.2f}s'
+            )
+        else:
+            self.get_logger().info('Base-height gating: disabled (model input dim is 48)')
 
         self.timer = self.create_timer(1.0 / policy_frequency, self.generate_actions)
 
@@ -95,9 +137,7 @@ class RLActionsNode(Node):
             f'Odom gating: topic={self.odom_topic} timeout={self.odom_timeout_sec:.2f}s'
         )
         self.get_logger().info(
-            'Obs layout (48): [0:3] base_lin_vel, [3:6] base_ang_vel, '
-            '[6:9] projected_gravity, [9:12] velocity_commands, '
-            '[12:24] joint_pos, [24:36] joint_vel, [36:48] actions'
+            f'Obs layout ({self.model_input_dim}): {self._format_obs_layout(self.obs_slices)}'
         )
         self.get_logger().info('Gravity projection: mode=inverse (hardcoded)')
 
@@ -180,8 +220,19 @@ class RLActionsNode(Node):
             commands = np.zeros(3, dtype=np.float32)
         self.velocity_commands = commands
 
+    def base_height_callback(self, msg):
+        self.base_height = np.float32(msg.data)
+        self.base_height_received = True
+        self.last_base_height_time = self.get_clock().now()
+
     def _elapsed_sec(self, now, since_time):
         return (now - since_time).nanoseconds * 1e-9
+
+    def _format_obs_layout(self, obs_slices):
+        parts = []
+        for name, s in obs_slices.items():
+            parts.append(f'[{s.start}:{s.stop}] {name}')
+        return ', '.join(parts)
 
     def _log_nonfinite_slice(self, name, values, now):
         finite_mask = np.isfinite(values)
@@ -220,6 +271,23 @@ class RLActionsNode(Node):
             )
             return False
 
+        if self.use_base_height_obs:
+            if not self.base_height_received:
+                self.get_logger().warn(
+                    f'Waiting for {self.base_height_topic} before policy inference',
+                    throttle_duration_sec=2.0,
+                )
+                return False
+
+            base_height_age = (now - self.last_base_height_time).nanoseconds * 1e-9
+            if base_height_age > self.base_height_timeout_sec:
+                self.get_logger().warn(
+                    f'Base height stale ({base_height_age:.3f}s > {self.base_height_timeout_sec:.3f}s). '
+                    'Pausing action publish.',
+                    throttle_duration_sec=2.0,
+                )
+                return False
+
         return True
 
     def generate_actions(self):
@@ -231,25 +299,19 @@ class RLActionsNode(Node):
         if not self._obs_ready(now):
             return
 
-        obs = np.zeros(48, dtype=np.float32)
-        obs[0:3]   = self.base_lin_vel
-        obs[3:6]   = self.ang_speed
-        obs[6:9]   = self.proj_gravity
-        obs[9:12]  = self.velocity_commands
-        obs[12:24] = self.q
-        obs[24:36] = self.dq
-        obs[36:48] = self.last_actions
-        obs_slices = {
-            'base_lin_vel': obs[0:3],
-            'base_ang_vel': obs[3:6],
-            'projected_gravity': obs[6:9],
-            'velocity_commands': obs[9:12],
-            'joint_pos': obs[12:24],
-            'joint_vel': obs[24:36],
-            'actions': obs[36:48],
-        }
-        for name, values in obs_slices.items():
-            self._log_nonfinite_slice(name, values, now)
+        obs = np.zeros(self.model_input_dim, dtype=np.float32)
+        obs[self.obs_slices['base_lin_vel']] = self.base_lin_vel
+        obs[self.obs_slices['base_ang_vel']] = self.ang_speed
+        if self.use_base_height_obs:
+            obs[self.obs_slices['base_height']] = self.base_height
+        obs[self.obs_slices['projected_gravity']] = self.proj_gravity
+        obs[self.obs_slices['cmd_vel']] = self.velocity_commands
+        obs[self.obs_slices['joint_pos']] = self.q
+        obs[self.obs_slices['joint_vel']] = self.dq
+        obs[self.obs_slices['actions']] = self.last_actions
+      
+        for name, obs_slice in self.obs_slices.items():
+            self._log_nonfinite_slice(name, obs[obs_slice], now)
 
         input_obs = obs.reshape(1, -1)
 
@@ -313,10 +375,10 @@ class RLActionsNode(Node):
         input_dim = self._extract_last_dim(input_shape)
         output_dim = self._extract_last_dim(output_shape)
 
-        if input_dim != 48:
+        if input_dim not in OBS_LAYOUTS:
             self.get_logger().fatal(
-                f'Invalid model input dim: expected 48, got {input_shape}. '
-                'Refusing to run.'
+                f'Invalid model input dim: expected one of {sorted(OBS_LAYOUTS.keys())}, '
+                f'got {input_shape}. Refusing to run.'
             )
             self.ort_session = None
             return
@@ -329,9 +391,14 @@ class RLActionsNode(Node):
             self.ort_session = None
             return
 
+        self.model_input_dim = input_dim
+        self.use_base_height_obs = input_dim == 49
+        self.obs_slices = OBS_LAYOUTS[input_dim]
+
         self.get_logger().info(
             f'Successfully loaded ONNX model: {policy_name} '
-            f'(input={input_shape}, output={output_shape})'
+            f'(input={input_shape}, output={output_shape}, '
+            f'use_base_height_obs={self.use_base_height_obs})'
         )
 
 

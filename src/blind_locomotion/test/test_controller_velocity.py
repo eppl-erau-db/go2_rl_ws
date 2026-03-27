@@ -7,6 +7,8 @@ import pytest
 from blind_locomotion.controller_commands import (
     clamp,
     stick_to_range,
+    stick_to_range_center_max,
+    stick_to_range_center_min,
     STICK_FIELDS,
     LIN_X_RANGE,
     LIN_Y_RANGE,
@@ -17,6 +19,16 @@ from blind_locomotion.controller_commands import (
     INVERT_LIN_X,
     INVERT_LIN_Y,
     INVERT_ANG_Z,
+    POSE_X_RANGE,
+    POSE_Y_RANGE,
+    POSE_Z_RANGE,
+    AXIS_POSE_X,
+    AXIS_POSE_Y,
+    AXIS_POSE_Z,
+    INVERT_POSE_X,
+    INVERT_POSE_Y,
+    INVERT_POSE_Z,
+    TIMEOUT_SEC,
 )
 
 
@@ -75,6 +87,30 @@ class TestStickToRange:
         assert result == pytest.approx(-1.0)
 
 
+class TestStickToRangeCenterMin:
+    def test_neutral_stick_gives_lower_bound(self):
+        assert stick_to_range_center_min(0.0, 0.2, 0.5) == pytest.approx(0.2)
+
+    def test_positive_stick_opens_range(self):
+        assert stick_to_range_center_min(1.0, 0.2, 0.5) == pytest.approx(0.5)
+        assert stick_to_range_center_min(0.5, 0.2, 0.5) == pytest.approx(0.35)
+
+    def test_negative_stick_stays_at_lower_bound(self):
+        assert stick_to_range_center_min(-1.0, 0.2, 0.5) == pytest.approx(0.2)
+
+
+class TestStickToRangeCenterMax:
+    def test_neutral_stick_gives_upper_bound(self):
+        assert stick_to_range_center_max(0.0, -0.3, -0.15) == pytest.approx(-0.15)
+
+    def test_negative_stick_opens_range(self):
+        assert stick_to_range_center_max(-1.0, -0.3, -0.15) == pytest.approx(-0.3)
+        assert stick_to_range_center_max(-0.5, -0.3, -0.15) == pytest.approx(-0.225)
+
+    def test_positive_stick_stays_at_upper_bound(self):
+        assert stick_to_range_center_max(1.0, -0.3, -0.15) == pytest.approx(-0.15)
+
+
 # ---------------------------------------------------------------------------
 # Helpers to build mock WirelessController messages
 # ---------------------------------------------------------------------------
@@ -91,8 +127,9 @@ def make_wireless_msg(lx=0.0, ly=0.0, rx=0.0, ry=0.0, keys=0):
 def _make_node(overrides=None):
     """Instantiate WirelessControl with rclpy mocked out.
 
-    Returns (node, published_twists, published_buttons) where the lists
-    accumulate every message published on cmd_vel / buttons.
+    Returns (node, published_twists, published_buttons).
+
+    Captured pose messages are available at node.published_poses.
 
     *overrides* is a dict of node attribute names to values, applied after
     setting defaults from the module-level constants.
@@ -101,6 +138,7 @@ def _make_node(overrides=None):
 
     published_twists = []
     published_buttons = []
+    published_poses = []
 
     with patch('blind_locomotion.controller_commands.Node.__init__'):
         node = object.__new__(WirelessControl)
@@ -119,6 +157,16 @@ def _make_node(overrides=None):
         node.invert_lin_x = INVERT_LIN_X
         node.invert_lin_y = INVERT_LIN_Y
         node.invert_ang_z = INVERT_ANG_Z
+        node.publish_pose_command = False
+        node.pose_x_range = POSE_X_RANGE
+        node.pose_y_range = POSE_Y_RANGE
+        node.pose_z_range = POSE_Z_RANGE
+        node.axis_pose_x = AXIS_POSE_X
+        node.axis_pose_y = AXIS_POSE_Y
+        node.axis_pose_z = AXIS_POSE_Z
+        node.invert_pose_x = INVERT_POSE_X
+        node.invert_pose_y = INVERT_POSE_Y
+        node.invert_pose_z = INVERT_POSE_Z
 
         # Apply overrides.
         if overrides:
@@ -136,6 +184,7 @@ def _make_node(overrides=None):
         node.last_msg_time = fake_time
         node.last_axis_warn_time = fake_time
         node.in_timeout = False
+        node.timeout_duration = SimpleNamespace(nanoseconds=int(TIMEOUT_SEC * 1e9))
 
         # Capture publishes.
         vel_pub = MagicMock()
@@ -145,6 +194,11 @@ def _make_node(overrides=None):
         btn_pub = MagicMock()
         btn_pub.publish = lambda msg: published_buttons.append(msg)
         node.buttons_publisher = btn_pub
+
+        pose_pub = MagicMock()
+        pose_pub.publish = lambda msg: published_poses.append(msg)
+        node.pose_publisher = pose_pub
+        node.published_poses = published_poses
 
     return node, published_twists, published_buttons
 
@@ -281,6 +335,82 @@ class TestOutOfRangeStickValues:
         node, twists, _ = _make_node()
         node.wireless_controller_callback(make_wireless_msg(ly=-1.5))
         assert twists[0].linear.x == pytest.approx(-1.0)
+
+
+class _FakeElapsed:
+    def __init__(self, seconds):
+        self.nanoseconds = int(seconds * 1e9)
+
+    def __le__(self, other):
+        return self.nanoseconds <= other.nanoseconds
+
+
+class _FakeTime:
+    def __init__(self, seconds):
+        self.seconds = seconds
+
+    def __sub__(self, other):
+        return _FakeElapsed(self.seconds - other.seconds)
+
+
+class TestPoseCommandMapping:
+    def test_neutral_sticks_publish_min_max_min_pose(self):
+        node, _, _ = _make_node({'publish_pose_command': True})
+        node.wireless_controller_callback(make_wireless_msg())
+
+        assert len(node.published_poses) == 1
+        pose = node.published_poses[0]
+        assert pose.position.x == pytest.approx(POSE_X_RANGE[0])
+        assert pose.position.y == pytest.approx(POSE_Y_RANGE[1])
+        assert pose.position.z == pytest.approx(POSE_Z_RANGE[0])
+        assert pose.orientation.w == pytest.approx(1.0)
+        assert pose.orientation.x == pytest.approx(0.0)
+        assert pose.orientation.y == pytest.approx(0.0)
+        assert pose.orientation.z == pytest.approx(0.0)
+
+    def test_left_stick_vertical_maps_pose_x(self):
+        node, _, _ = _make_node({'publish_pose_command': True})
+        node.wireless_controller_callback(make_wireless_msg(ly=1.0))
+        assert node.published_poses[-1].position.x == pytest.approx(POSE_X_RANGE[1])
+
+        node.wireless_controller_callback(make_wireless_msg(ly=-1.0))
+        assert node.published_poses[-1].position.x == pytest.approx(POSE_X_RANGE[0])
+
+    def test_right_stick_horizontal_maps_pose_y_with_inversion(self):
+        node, _, _ = _make_node({'publish_pose_command': True})
+        node.wireless_controller_callback(make_wireless_msg(rx=-1.0))
+        assert node.published_poses[-1].position.y == pytest.approx(POSE_Y_RANGE[1])
+
+        node.wireless_controller_callback(make_wireless_msg(rx=1.0))
+        assert node.published_poses[-1].position.y == pytest.approx(POSE_Y_RANGE[0])
+
+    def test_right_stick_vertical_maps_pose_z(self):
+        node, _, _ = _make_node({'publish_pose_command': True})
+        node.wireless_controller_callback(make_wireless_msg(ry=1.0))
+        assert node.published_poses[-1].position.z == pytest.approx(POSE_Z_RANGE[1])
+
+        node.wireless_controller_callback(make_wireless_msg(ry=-1.0))
+        assert node.published_poses[-1].position.z == pytest.approx(POSE_Z_RANGE[0])
+
+    def test_timeout_publishes_neutral_pose(self):
+        node, _, _ = _make_node({'publish_pose_command': True})
+        node.wireless_controller_callback(make_wireless_msg(ly=1.0, rx=1.0, ry=1.0))
+        assert node.published_poses[-1].position.x == pytest.approx(POSE_X_RANGE[1])
+        assert node.published_poses[-1].position.y == pytest.approx(POSE_Y_RANGE[0])
+        assert node.published_poses[-1].position.z == pytest.approx(POSE_Z_RANGE[1])
+
+        node.last_msg_time = _FakeTime(0.0)
+        now_time = _FakeTime(1.0)
+        node.get_clock = MagicMock(
+            return_value=MagicMock(now=MagicMock(return_value=now_time))
+        )
+
+        node.check_timeout()
+        timeout_pose = node.published_poses[-1]
+        assert timeout_pose.position.x == pytest.approx(POSE_X_RANGE[0])
+        assert timeout_pose.position.y == pytest.approx(POSE_Y_RANGE[1])
+        assert timeout_pose.position.z == pytest.approx(POSE_Z_RANGE[0])
+        assert timeout_pose.orientation.w == pytest.approx(1.0)
 
 
 class TestButtonMapping:

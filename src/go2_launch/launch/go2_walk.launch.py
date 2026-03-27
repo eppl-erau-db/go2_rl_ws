@@ -37,6 +37,16 @@ def generate_launch_description():
         default_value='0.1',
         description='Deadband for cmd_vel observation component',
     )
+    base_height_topic_arg = DeclareLaunchArgument(
+        'base_height_topic',
+        default_value='/base_height',
+        description='Base height topic used for 49-dim policies',
+    )
+    base_height_timeout_sec_arg = DeclareLaunchArgument(
+        'base_height_timeout_sec',
+        default_value='0.5',
+        description='Pause policy when base-height age exceeds this timeout (49-dim only)',
+    )
 
     enable_joint_limit_monitor_arg = DeclareLaunchArgument(
         'enable_joint_limit_monitor',
@@ -58,6 +68,8 @@ def generate_launch_description():
             odom_topic_arg,
             odom_timeout_sec_arg,
             cmd_vel_deadband_arg,
+            base_height_topic_arg,
+            base_height_timeout_sec_arg,
             enable_joint_limit_monitor_arg,
             enable_base_height_estimator_arg,
             LogInfo(
@@ -87,6 +99,8 @@ def generate_launch_description():
                         'odom_topic': LaunchConfiguration('odom_topic'),
                         'odom_timeout_sec': LaunchConfiguration('odom_timeout_sec'),
                         'cmd_vel_deadband': LaunchConfiguration('cmd_vel_deadband'),
+                        'base_height_topic': LaunchConfiguration('base_height_topic'),
+                        'base_height_timeout_sec': LaunchConfiguration('base_height_timeout_sec'),
                     }
                 ],
                 output='screen',

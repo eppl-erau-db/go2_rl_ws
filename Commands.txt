@@ -89,9 +89,7 @@ For reference, motor limits:
         #     [-4.530, 1.570],  # Rear Thigh
         #     [-2.720, 0.837]   # Rear Calf
         # ]
-        
-        
-ros2 launch go2_launch go2_reach.launch.py enable_joint_limit_monitor:=false        
+      
         
         
         

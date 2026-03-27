@@ -44,3 +44,25 @@ except (ImportError, ModuleNotFoundError):
     _bl_msg.Button = _make_msg_class(_bl_button_fields)
     _bl_pkg.msg = _bl_msg  # type: ignore[attr-defined]
     sys.modules['blind_locomotion.msg'] = _bl_msg
+
+# --- geometry_msgs.msg.Pose/Twist ---
+try:
+    from geometry_msgs.msg import Pose, Twist  # noqa: F401
+except (ImportError, ModuleNotFoundError):
+    _geometry_pkg = ModuleType('geometry_msgs')
+    _geometry_msg = ModuleType('geometry_msgs.msg')
+    _geometry_msg.Pose = _make_msg_class(
+        {
+            'position': _make_msg_class({'x': 0.0, 'y': 0.0, 'z': 0.0})(),
+            'orientation': _make_msg_class({'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0})(),
+        }
+    )
+    _geometry_msg.Twist = _make_msg_class(
+        {
+            'linear': _make_msg_class({'x': 0.0, 'y': 0.0, 'z': 0.0})(),
+            'angular': _make_msg_class({'x': 0.0, 'y': 0.0, 'z': 0.0})(),
+        }
+    )
+    _geometry_pkg.msg = _geometry_msg
+    sys.modules.setdefault('geometry_msgs', _geometry_pkg)
+    sys.modules.setdefault('geometry_msgs.msg', _geometry_msg)

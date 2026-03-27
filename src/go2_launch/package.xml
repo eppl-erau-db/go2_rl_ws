@@ -11,6 +11,7 @@
 
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>base_height_estimator</exec_depend>
   <exec_depend>blind_locomotion</exec_depend>
   <exec_depend>rl_deploy</exec_depend>
   <exec_depend>unitree_go</exec_depend>
