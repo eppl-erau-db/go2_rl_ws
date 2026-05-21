@@ -29,6 +29,11 @@ from std_msgs.msg import Float32, Float32MultiArray
 from unitree_go.msg import LowState
 from ament_index_python.packages import get_package_share_directory
 
+try:
+    from blind_locomotion.ros_node_shutdown import spin_until_shutdown
+except ModuleNotFoundError:
+    from ros_node_shutdown import spin_until_shutdown
+
 
 def clamp(value, lo, hi):
     return min(max(value, lo), hi)
@@ -423,8 +428,7 @@ class RLReachActionsNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = RLReachActionsNode()
-    rclpy.spin(node=node)
-    rclpy.shutdown()
+    spin_until_shutdown(node)
 
 
 if __name__ == "__main__":

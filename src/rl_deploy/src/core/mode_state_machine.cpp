@@ -23,11 +23,15 @@ Mode ModeStateMachine::update(const ButtonState& b, const StatusFlags& st) {
     current_mode_ = Mode::Standing;
   } else if (b.sit) {
     current_mode_ = Mode::Sitting;
+  } else if (
+      b.pedipulate
+      && (current_mode_ == Mode::Standing || current_mode_ == Mode::Walking
+          || current_mode_ == Mode::Pedipulation)) {
+    current_mode_ = Mode::Pedipulation;
+  } else if (b.start && current_mode_ == Mode::Pedipulation) {
+    current_mode_ = Mode::Walking;
   } else if (b.start && st.good_stand) {
     current_mode_ = Mode::Walking;
-  } else if (b.stop_walking && current_mode_ == Mode::Walking) {
-    // Stop walking returns to standing (since we're already stood)
-    current_mode_ = Mode::Standing;
   }
 
   // Mode completion transitions
@@ -41,8 +45,7 @@ Mode ModeStateMachine::update(const ButtonState& b, const StatusFlags& st) {
     current_mode_ = Mode::Idle;
   }
   
-  // Note: Standing mode stays latched (does not auto-transition)
-  // Robot remains in Standing until another mode is explicitly requested
+  // Note: Standing and Pedipulation stay latched until another mode is requested
 
   return current_mode_;
 }

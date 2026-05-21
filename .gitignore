@@ -44,3 +44,14 @@
 # Cyclonedds 
 src/unitree_ros2/cyclonedds_ws/src/rmw_cyclonedds/
 src/unitree_ros2/cyclonedds_ws/src/cyclonedds/
+
+# Local experiments and generated artifacts
+.codex
+*.egg-info/
+rosbag2_*/
+go2_experiment_metrics.*
+launch_commands.md
+nav_ai_sport_test.txt
+return_to_aisport_test.txt
+play_nav_sim.py
+src/blind_locomotion/share/models/*.onnx

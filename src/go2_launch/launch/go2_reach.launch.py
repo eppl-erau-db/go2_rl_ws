@@ -20,7 +20,7 @@ def generate_launch_description():
     # Declare launch arguments
     policy_name_arg = DeclareLaunchArgument(
         'policy_name',
-        default_value='right_reach_policy_53_nono',
+        default_value='reachpolicy18v2',
         description='Name of the ONNX policy file (without .onnx extension)'
     )
     

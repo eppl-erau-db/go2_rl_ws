@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>go2_bag_visualizer</name>
+  <version>0.1.0</version>
+  <description>RViz marker visualization for Go2 dated rosbag playback.</description>
+  <maintainer email="gabearod2@gmail.com">Gabriel Rodriguez</maintainer>
+  <license>MIT</license>
+
+  <depend>builtin_interfaces</depend>
+  <depend>geometry_msgs</depend>
+  <depend>lidar_obstacle_detection_msgs</depend>
+  <depend>rclpy</depend>
+  <depend>unitree_go</depend>
+  <depend>visualization_msgs</depend>
+
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ros2bag</exec_depend>
+  <exec_depend>rosbag2_transport</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>python3-matplotlib</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

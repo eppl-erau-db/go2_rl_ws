@@ -1,6 +1,7 @@
 #include "rl_deploy/lowcmd_builder.hpp"
 #include "rl_deploy/constants.hpp"
 #include "motor_crc.h"
+#include <algorithm>
 
 namespace rl_deploy {
 
@@ -84,8 +85,8 @@ static unitree_go::msg::LowCmd make_emergency_sit_cmd() {
   return cmd;
 }
 
-// Build command for Walking mode - use RL policy actions
-static unitree_go::msg::LowCmd make_walk_cmd(
+// Build command for policy-driven modes - use RL joint position targets.
+static unitree_go::msg::LowCmd make_action_cmd(
     const unitree_go::msg::LowState& state,
     const std::vector<float>& actions) {
   auto cmd = init_cmd();
@@ -174,7 +175,8 @@ unitree_go::msg::LowCmd make_cmd_for_mode(
       return make_emergency_sit_cmd();
     
     case Mode::Walking:
-      return make_walk_cmd(latest_state, actions);
+    case Mode::Pedipulation:
+      return make_action_cmd(latest_state, actions);
     
     case Mode::Damping:
       return make_damping_cmd(latest_state);
@@ -186,6 +188,28 @@ unitree_go::msg::LowCmd make_cmd_for_mode(
       // Unknown mode - return idle for safety
       return make_idle_cmd();
   }
+}
+
+unitree_go::msg::LowCmd make_stand_transition_cmd(
+    const std::array<double, 12>& start_positions,
+    double alpha) {
+  auto cmd = init_cmd();
+  alpha = std::clamp(alpha, 0.0, 1.0);
+
+  for (size_t i = 0; i < 12; ++i) {
+    const double target =
+      start_positions[i] * (1.0 - alpha) + StandPos[i] * alpha;
+
+    cmd.motor_cmd[i].mode = 0x01;
+    cmd.motor_cmd[i].q = static_cast<float>(target);
+    cmd.motor_cmd[i].dq = 0.0f;
+    cmd.motor_cmd[i].kp = static_cast<float>(kp_stand);
+    cmd.motor_cmd[i].kd = static_cast<float>(kd_stand);
+    cmd.motor_cmd[i].tau = 0.0f;
+  }
+
+  get_crc(cmd);
+  return cmd;
 }
 
 } // namespace rl_deploy

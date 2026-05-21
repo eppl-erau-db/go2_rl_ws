@@ -423,6 +423,7 @@ class TestButtonMapping:
         (8, 'select'),
         (256, 'a'),
         (512, 'b'),
+        (64, 'f1'),
     ])
     def test_single_button(self, keys, field):
         node, _, buttons = _make_node()
@@ -430,7 +431,7 @@ class TestButtonMapping:
         assert len(buttons) == 1
         assert getattr(buttons[0], field) is True
         # All other buttons should be False.
-        for other in ('up', 'down', 'start', 'select', 'a', 'b', 'emergency_sit'):
+        for other in ('up', 'down', 'start', 'select', 'a', 'b', 'f1', 'emergency_sit'):
             if other != field:
                 assert getattr(buttons[0], other) is False
 
@@ -440,8 +441,16 @@ class TestButtonMapping:
         btn = buttons[0]
         assert all(
             getattr(btn, f) is False
-            for f in ('up', 'down', 'start', 'select', 'a', 'b', 'emergency_sit')
+            for f in ('up', 'down', 'start', 'select', 'a', 'b', 'f1', 'emergency_sit')
         )
+
+    def test_multiple_buttons_pressed(self):
+        node, _, buttons = _make_node()
+        node.wireless_controller_callback(make_wireless_msg(keys=64 | 256))
+        btn = buttons[0]
+        assert btn.f1 is True
+        assert btn.a is True
+        assert btn.up is False
 
 
 class TestMultipleCallbacks:

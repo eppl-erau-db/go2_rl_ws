@@ -19,6 +19,11 @@ from scipy.spatial.transform import Rotation as Rot
 from std_msgs.msg import Float32, Float32MultiArray
 from unitree_go.msg import LowState
 
+try:
+    from blind_locomotion.ros_node_shutdown import spin_until_shutdown
+except ModuleNotFoundError:
+    from ros_node_shutdown import spin_until_shutdown
+
 
 OBS_LAYOUTS = {
     48: {
@@ -405,8 +410,7 @@ class RLActionsNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = RLActionsNode()
-    rclpy.spin(node=node)
-    rclpy.shutdown()
+    spin_until_shutdown(node)
 
 
 if __name__ == '__main__':

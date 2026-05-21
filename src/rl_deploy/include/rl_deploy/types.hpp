@@ -8,6 +8,7 @@ namespace rl_deploy{
         Sitting,
         EmergencySitting,  // Slower sit for safety recovery
         Walking, 
+        Pedipulation,
         Damping, 
         Killed
     };
@@ -16,7 +17,8 @@ namespace rl_deploy{
             sit{false},
             emergency_sit{false},
             start{false},
-            stop_walking{false}, 
+            pedipulate{false},
+            f1{false},
             soft_abort{false}, 
             kill{false};
     };

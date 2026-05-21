@@ -24,13 +24,18 @@ setup(
     entry_points={
         'console_scripts': [
             'rl_actions = blind_locomotion.rl_actions:main',
+            'rl_nav_commands = blind_locomotion.rl_nav_commands:main',
             'rl_reach_actions = blind_locomotion.rl_reach_actions:main',
+            'pedipulation_executor = blind_locomotion.pedipulation_executor:main',
             'controller_commands = blind_locomotion.controller_commands:main',
-            'test_action_publisher.py = blind_locomotion.test_action_publisher:main',
+            'cmd_vel_mux = blind_locomotion.cmd_vel_mux:main',
+            'ai_sport_cmd_vel = blind_locomotion.ai_sport_cmd_vel:main',
+            'go2_standing_handoff = blind_locomotion.go2_standing_handoff:main',
+            'test_action_publisher = blind_locomotion.test_action_publisher:main',
             'keyboard_buttons = blind_locomotion.keyboard_buttons:main',
-            'fake_lowstate_publisher.py = blind_locomotion.fake_lowstate_publisher:main',
-            'lowcmd_decoder.py = blind_locomotion.lowcmd_decoder:main',
-            'lowstate_monitor.py = blind_locomotion.lowstate_monitor:main',
+            'fake_lowstate_publisher = blind_locomotion.fake_lowstate_publisher:main',
+            'lowcmd_decoder = blind_locomotion.lowcmd_decoder:main',
+            'lowstate_monitor = blind_locomotion.lowstate_monitor:main',
         ],
     },
 )

@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <vector>
 #include "rl_deploy/types.hpp"
 #include "unitree_go/msg/low_cmd.hpp"
@@ -14,4 +15,9 @@ unitree_go::msg::LowCmd make_cmd_for_mode(
   const std::vector<float>& actions
 );
 
-} 
+unitree_go::msg::LowCmd make_stand_transition_cmd(
+  const std::array<double, 12>& start_positions,
+  double alpha
+);
+
+}

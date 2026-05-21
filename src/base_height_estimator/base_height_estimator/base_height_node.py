@@ -3,6 +3,7 @@
 
 import numpy as np
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation
 from std_msgs.msg import Float32
@@ -86,12 +87,24 @@ class BaseHeightEstimator(Node):
         self.last_publish_time = now
 
 
+def _spin_until_shutdown(node):
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    except RuntimeError:
+        if rclpy.ok():
+            raise
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+
+
 def main(args=None):
     rclpy.init(args=args)
     node = BaseHeightEstimator()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    _spin_until_shutdown(node)
 
 
 if __name__ == '__main__':

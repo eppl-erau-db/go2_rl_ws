@@ -6,6 +6,11 @@ from geometry_msgs.msg import Pose, Twist
 from unitree_go.msg import WirelessController
 from blind_locomotion.msg import Button
 
+try:
+    from blind_locomotion.ros_node_shutdown import spin_until_shutdown
+except ModuleNotFoundError:
+    from ros_node_shutdown import spin_until_shutdown
+
 
 STICK_FIELDS = {
     'left_x': 'lx',
@@ -148,12 +153,13 @@ class WirelessControl(Node):
 
     def _buttons_from_wireless(self, msg):
         button = Button()
-        button.up = msg.keys == 4096
-        button.down = msg.keys == 16384
-        button.start = msg.keys == 4
-        button.select = msg.keys == 8
-        button.a = msg.keys == 256
-        button.b = msg.keys == 512
+        button.up = bool(msg.keys & 4096)
+        button.down = bool(msg.keys & 16384)
+        button.start = bool(msg.keys & 4)
+        button.select = bool(msg.keys & 8)
+        button.a = bool(msg.keys & 256)
+        button.b = bool(msg.keys & 512)
+        button.f1 = bool(msg.keys & 64)
         button.emergency_sit = False
         return button
 
@@ -252,9 +258,7 @@ class WirelessControl(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = WirelessControl()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    spin_until_shutdown(node)
 
 
 if __name__ == '__main__':
