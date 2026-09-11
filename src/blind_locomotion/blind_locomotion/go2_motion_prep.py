@@ -11,21 +11,85 @@ from typing import Optional
 
 import rclpy
 from rclpy.node import Node
-from unitree_go.msg import SportModeState
+from unitree_go.msg import LowState, SportModeState
 
 
 LIE_DOWN_MODE = 5
 
+# Some firmware/mode combinations never report LIE_DOWN_MODE on
+# /sportmodestate (observed: mode stays 0 standing and lying). Lie-down is
+# therefore also confirmed from body height and from joint positions.
+# Standing body_height is ~0.32 m; lying is ~0.075 m.
+DEFAULT_LIE_DOWN_BODY_HEIGHT_MAX = 0.15
+
+# Mirrors SitPos / position_tolerance in rl_deploy/include/rl_deploy/constants.hpp
+# Order: FR(hip,thigh,calf), FL, RR, RL
+SIT_POS = (
+    -0.046, 1.262, -2.784,
+    0.048, 1.257, -2.794,
+    -0.341, 1.278, -2.810,
+    0.317, 1.265, -2.788,
+)
+DEFAULT_SIT_JOINT_TOLERANCE_RAD = 0.3
+
+
+def max_sit_joint_error(joints) -> float:
+    """Largest |q - SIT_POS| over the 12 leg joints; inf when joints unknown."""
+    if joints is None or len(joints) < len(SIT_POS):
+        return float('inf')
+    return max(abs(q - ref) for q, ref in zip(joints, SIT_POS))
+
+
+def lie_down_reason(
+    state,
+    joints,
+    *,
+    body_height_max: float = DEFAULT_LIE_DOWN_BODY_HEIGHT_MAX,
+    sit_joint_tolerance_rad: float = DEFAULT_SIT_JOINT_TOLERANCE_RAD,
+) -> Optional[str]:
+    """
+    Return which signal says the robot is lying down, or None.
+
+    ``state`` is the latest SportModeState (or None); ``joints`` the latest
+    12 joint positions from LowState in Unitree order (or None).
+    """
+    if state is not None:
+        if state.mode == LIE_DOWN_MODE:
+            return 'mode'
+        if 0.0 < state.body_height <= body_height_max:
+            return 'body_height'
+    if max_sit_joint_error(joints) <= sit_joint_tolerance_rad:
+        return 'joints'
+    return None
+
 
 class SportModeStateWatcher(Node):
-    """Tracks the latest sport-mode state and confirms lie-down mode."""
+    """
+    Track sport-mode state and low state, and confirm the robot is lying down.
 
-    def __init__(self, topic_name: str) -> None:
+    Lie-down is confirmed when any of these holds on consecutive samples:
+      * sport-mode ``mode == LIE_DOWN_MODE``
+      * sport-mode ``0 < body_height <= body_height_max``
+      * all 12 joints within ``sit_joint_tolerance_rad`` of ``SIT_POS``
+    """
+
+    def __init__(
+        self,
+        topic_name: str,
+        *,
+        lowstate_topic: str = '/lowstate',
+        body_height_max: float = DEFAULT_LIE_DOWN_BODY_HEIGHT_MAX,
+        sit_joint_tolerance_rad: float = DEFAULT_SIT_JOINT_TOLERANCE_RAD,
+    ) -> None:
         super().__init__('go2_motion_prep')
         self._topic_name = topic_name
+        self._body_height_max = float(body_height_max)
+        self._sit_joint_tolerance_rad = float(sit_joint_tolerance_rad)
         self._last_state: Optional[SportModeState] = None
         self._last_state_time_monotonic = 0.0
+        self._last_joints: Optional[list] = None
         self._consecutive_lie_down_samples = 0
+        self._last_lie_down_reason: Optional[str] = None
         self._has_logged_first_state = False
 
         self.create_subscription(
@@ -34,10 +98,44 @@ class SportModeStateWatcher(Node):
             self._sport_mode_state_callback,
             10,
         )
+        self.create_subscription(
+            LowState,
+            lowstate_topic,
+            self._lowstate_callback,
+            10,
+        )
 
     @property
     def last_state(self) -> Optional[SportModeState]:
         return self._last_state
+
+    @property
+    def last_joints(self) -> Optional[list]:
+        return self._last_joints
+
+    @property
+    def lie_down_reason(self) -> Optional[str]:
+        return self._last_lie_down_reason
+
+    def max_sit_joint_error(self) -> float:
+        return max_sit_joint_error(self._last_joints)
+
+    def _update_lie_down_confirmation(self) -> None:
+        reason = lie_down_reason(
+            self._last_state,
+            self._last_joints,
+            body_height_max=self._body_height_max,
+            sit_joint_tolerance_rad=self._sit_joint_tolerance_rad,
+        )
+        if reason is None:
+            self._consecutive_lie_down_samples = 0
+        else:
+            self._consecutive_lie_down_samples += 1
+            self._last_lie_down_reason = reason
+
+    def _lowstate_callback(self, msg: LowState) -> None:
+        self._last_joints = [msg.motor_state[i].q for i in range(12)]
+        self._update_lie_down_confirmation()
 
     def state_age_sec(self) -> float:
         if self._last_state is None:
@@ -53,10 +151,7 @@ class SportModeStateWatcher(Node):
     def _sport_mode_state_callback(self, msg: SportModeState) -> None:
         self._last_state = msg
         self._last_state_time_monotonic = time.monotonic()
-        if msg.mode == LIE_DOWN_MODE:
-            self._consecutive_lie_down_samples += 1
-        else:
-            self._consecutive_lie_down_samples = 0
+        self._update_lie_down_confirmation()
 
         if not self._has_logged_first_state:
             self._has_logged_first_state = True
@@ -192,15 +287,22 @@ def prepare_robot_for_low_level_control(
     lie_down_settle_sec: float = 1.0,
     shutoff_timeout_sec: float = 20.0,
     allow_missing_sport_state: bool = False,
+    lowstate_topic: str = '/lowstate',
+    lie_down_body_height_max: float = DEFAULT_LIE_DOWN_BODY_HEIGHT_MAX,
+    sit_joint_tolerance_rad: float = DEFAULT_SIT_JOINT_TOLERANCE_RAD,
 ) -> None:
     """Drive the robot into lie-down, then deactivate sport-mode control."""
-
     did_init_rclpy = False
     if not rclpy.ok():
         rclpy.init(args=None)
         did_init_rclpy = True
 
-    watcher = SportModeStateWatcher(sport_state_topic)
+    watcher = SportModeStateWatcher(
+        sport_state_topic,
+        lowstate_topic=lowstate_topic,
+        body_height_max=lie_down_body_height_max,
+        sit_joint_tolerance_rad=sit_joint_tolerance_rad,
+    )
     try:
         watcher.get_logger().info(
             'Preparing robot for low-level control on %s'
@@ -244,20 +346,27 @@ def prepare_robot_for_low_level_control(
                 f'{sport_state_topic}. Make sure DDS/ROS communication is up.'
             )
 
-        if watcher.last_state.mode == LIE_DOWN_MODE:
-            _spin_until(
-                watcher,
-                lambda: watcher.has_lie_down_confirmation(
-                    lie_down_confirmation_samples
-                ),
-                timeout_sec=1.0,
-            )
+        # Give the joint/body-height checks a moment in case the robot is
+        # already down; otherwise fall through to requesting StandDown.
+        _spin_until(
+            watcher,
+            lambda: watcher.has_lie_down_confirmation(
+                lie_down_confirmation_samples
+            ),
+            timeout_sec=1.0,
+        )
 
         if watcher.has_lie_down_confirmation(lie_down_confirmation_samples):
             last_state = watcher.last_state
             watcher.get_logger().info(
-                'Robot already reports lie-down mode=%d body_height=%.3f'
-                % (last_state.mode, last_state.body_height)
+                'Robot already lying down (via %s): mode=%d body_height=%.3f '
+                'max|q-SitPos|=%.3f'
+                % (
+                    watcher.lie_down_reason,
+                    last_state.mode,
+                    last_state.body_height,
+                    watcher.max_sit_joint_error(),
+                )
             )
         else:
             watcher.get_logger().info(
@@ -280,18 +389,34 @@ def prepare_robot_for_low_level_control(
                     confirmation_samples=lie_down_confirmation_samples,
                 ):
                     sport_client_output = _terminate_process(sport_client_process)
+                    last_state = watcher.last_state
                     raise RuntimeError(
-                        'Timed out waiting for lie-down confirmation from '
-                        f'{sport_state_topic} after requesting StandDown().\n'
-                        f'go2_sport_client output:\n{sport_client_output}'
+                        'Timed out waiting for lie-down confirmation after '
+                        'requesting StandDown(). Last sport state: mode=%d '
+                        'body_height=%.3f (max %.3f); max|q-SitPos|=%.3f '
+                        '(tolerance %.3f).\ngo2_sport_client output:\n%s'
+                        % (
+                            last_state.mode,
+                            last_state.body_height,
+                            lie_down_body_height_max,
+                            watcher.max_sit_joint_error(),
+                            sit_joint_tolerance_rad,
+                            sport_client_output,
+                        )
                     )
             finally:
                 sport_client_output = _terminate_process(sport_client_process)
 
             last_state = watcher.last_state
             watcher.get_logger().info(
-                'Confirmed lie-down via %s: mode=%d body_height=%.3f'
-                % (sport_state_topic, last_state.mode, last_state.body_height)
+                'Confirmed lie-down (via %s): mode=%d body_height=%.3f '
+                'max|q-SitPos|=%.3f'
+                % (
+                    watcher.lie_down_reason,
+                    last_state.mode,
+                    last_state.body_height,
+                    watcher.max_sit_joint_error(),
+                )
             )
             if sport_client_output.strip():
                 print('[go2_motion_prep] go2_sport_client output:')

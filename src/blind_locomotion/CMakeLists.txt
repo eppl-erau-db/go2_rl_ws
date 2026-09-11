@@ -35,6 +35,7 @@ install(PROGRAMS
   blind_locomotion/cmd_vel_mux.py
   blind_locomotion/ai_sport_cmd_vel.py
   blind_locomotion/go2_standing_handoff.py
+  blind_locomotion/go2_stand_ready_gate.py
   blind_locomotion/test_action_publisher.py
   blind_locomotion/keyboard_buttons.py
   blind_locomotion/lowcmd_decoder.py

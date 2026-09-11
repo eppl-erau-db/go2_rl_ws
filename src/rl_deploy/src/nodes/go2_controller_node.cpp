@@ -2,6 +2,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float32_multi_array.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include "unitree_go/msg/low_cmd.hpp"
 #include "unitree_go/msg/low_state.hpp"
@@ -98,6 +99,10 @@ public:
     
     // Publishers
     pub_ = create_publisher<unitree_go::msg::LowCmd>("/lowcmd", 10);
+    // Controller status for launch-time sequencing (e.g. start leg odometry
+    // only once the robot is actually standing).
+    pub_mode_ = create_publisher<std_msgs::msg::String>("controller_mode", 10);
+    pub_stand_ready_ = create_publisher<std_msgs::msg::Bool>("stand_ready", 10);
     execute_push_client_ = create_client<std_srvs::srv::Trigger>(pedipulation_execute_service_);
     cancel_push_client_ = create_client<std_srvs::srv::Trigger>(pedipulation_cancel_service_);
 
@@ -495,10 +500,31 @@ private:
     }
 
     previous_buttons_ = requested_buttons;
+    publish_status();
+  }
+
+  // Publish controller mode and stand-ready flag at a reduced rate (every
+  // status_publish_period_ticks_ control ticks).
+  void publish_status() {
+    if (++status_tick_counter_ < status_publish_period_ticks_) {
+      return;
+    }
+    status_tick_counter_ = 0;
+
+    std_msgs::msg::String mode_msg;
+    mode_msg.data = mode_to_string(mode_);
+    pub_mode_->publish(mode_msg);
+
+    std_msgs::msg::Bool stand_ready_msg;
+    stand_ready_msg.data =
+      (mode_ == rl_deploy::Mode::Standing) && status_.good_stand;
+    pub_stand_ready_->publish(stand_ready_msg);
   }
   
   // Publishers & Subscribers
   rclcpp::Publisher<unitree_go::msg::LowCmd>::SharedPtr pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_mode_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_stand_ready_;
   rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr sub_walking_actions_;
   rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr sub_pedipulation_actions_;
   rclcpp::Subscription<blind_locomotion::msg::Button>::SharedPtr sub_buttons_;
@@ -549,6 +575,8 @@ private:
   bool handoff_ramp_started_{false};
   bool handoff_ramp_complete_{false};
   double ai_sport_return_sit_timeout_sec_{6.0};
+  int status_tick_counter_{0};
+  const int status_publish_period_ticks_{10};  // 200Hz tick -> 20Hz status
   const double handoff_hold_sec_{0.25};
   const double handoff_ramp_duration_sec_{1.50};
 };
